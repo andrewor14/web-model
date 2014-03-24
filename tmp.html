@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>SDN Convergence Modeling</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="" name="description">
+    <meta content="" name="author">
+    <!-- Le styles -->
+    <link href="./assets/css/bootstrap.css" rel="stylesheet">
+    <style type="text/css">
+      body {
+        padding-top: 20px;
+        padding-bottom: 40px;
+      }
+      .container-narrow {
+        margin: 0 auto;
+        max-width: 1200px;
+      }
+      .container-narrow > hr {
+        margin: 30px 0;
+      }
+      /* Main marketing message and sign up button */
+      .jumbotron {
+        margin: 60px 0;
+        text-align: center;
+      }
+      .jumbotron h1 {
+        font-size: 72px;
+        line-height: 1;
+      }
+      .jumbotron .btn {
+        font-size: 21px;
+        padding: 14px 24px;
+      }
+      /* Supporting marketing content */
+      .marketing {
+        margin: 60px 0;
+      }
+      .marketing p + h4 {
+        margin-top: 28px;
+      }
+      .dropdown-toggle {
+        margin-top: 9px;
+      }
+    </style>
+    <link href="assets/css/graph.css" rel="stylesheet">
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="./assets/js/html5shiv.js"></script>
+    <![endif]-->
+    <!-- Fav and touch icons -->
+    <link href="./assets/ico/apple-touch-icon-144-precomposed.png" rel="apple-touch-icon-precomposed" sizes="144x144">
+    <link href="./assets/ico/apple-touch-icon-114-precomposed.png" rel="apple-touch-icon-precomposed" sizes="114x114">
+    <link href="./assets/ico/apple-touch-icon-72-precomposed.png" rel="apple-touch-icon-precomposed" sizes="72x72">
+    <link href="./assets/ico/apple-touch-icon-57-precomposed.png" rel="apple-touch-icon-precomposed">
+    <link href="./assets/ico/favicon.png" rel="shortcut icon">
+    <!-- Scripts -->
+    <link href="./assets/css/jquery-ui.css" rel="stylesheet" type="text/css">
+    <script language="JavaScript" src="./assets/js/flotr-0.1.0alpha.js" type="text/javascript"></script>
+    <script language="JavaScript" src="./assets/js/prototype-1.6.0.2.js" type="text/javascript"></script>
+    <script language="JavaScript" src="./misc.js" type="text/javascript"></script>
+    <script language="JavaScript" src="./replication.js" type="text/javascript"></script>
+    <script language="JavaScript" src="./floyd-warshall.js" type="text/javascript"></script>
+    <link href="./assets/css/bootstrap-responsive.css" rel="stylesheet">
+    <link href="./assets/css/convergence.css" rel="stylesheet">
+
+    <script language="JavaScript" src="./assets/js/d3.v3.min.js" type="text/javascript"></script>
+    <script src="./assets/js/jquery.js"></script>
+    <script language="JavaScript" src="./assets/js/jquery-ui.js" type="text/javascript"></script>
+    <script type="text/javascript" src="./assets/js/coffee-script.js"></script>
+    <script type="text/coffeescript" src="./assets/coffee/vis.coffee"></script>
+    <script>
+      jQuery.noConflict();
+    </script>
+  </head>
+
+  <body>
+    <div class="container-narrow">
+      <div class="masthead">
+        <ul class="nav nav-pills pull-right">
+          <li class="active"><a href="#">Home</a>
+          </li>
+          <li><a href="#about">About</a>
+          </li>
+          <li><a href="#instructions">Instructions</a>
+          </li>
+          <li><a href="#demo">Demo</a>
+          </li>
+          <li><a href="#questions">Questions</a>
+          </li>
+        </ul>
+         <h3 class="muted">SDN Convergence Modeling</h3>
+
+      </div>
+      <hr>
+      <div class="jumbotron">
+        <h1>SDN Convergence Modeling</h1>
+        <p class="lead">How long do your SDN controllers take to converge?</p>
+      </div>
+      <hr>
+        
+      <div class="row-fluid marketing">
+        <section id="about">
+          <div class="page-header">
+             <h1>Convergence Modeling in Brief</h1>
+          </div>
+          <p>Which replication algorithm is best for you?</p>
+          <p>This tool can be used to provide a quantitative evaluation of which replication and network update algorithms are most appropriate for a given topology and workload. With it, you can answer questions such as "How far will my current approach scale?",
+            and "What is the convergence time of my network under a worst-case workload?".</p>
+        </section>
+      </div>
+      
+      <!-- row-fluid marketing -->
+      <hr>
+      <div class="row-fluid marketing">
+        <section id="instructions">
+          <div class="page-header">
+             <h1>Convergence Modeling</h1>
+          </div>
+          <h3>Controls:</h3>
+          <ul>
+            <li id="accuracy"><em>Accuracy</em>: Monte Carlo simulation means we run repeated trials for a configuration. This parameter determines how many samples we take to determine the CDF.</li>
+            <li><em>Operation Latency</em>: How long does each processing step take? Here, this includes the time to compute a write response at a single node (W), the network latency between controllers (P<sub>c</sub>) and between switches and controllers (P<sub>s</sub>),
+              and the latency to compute a read response at a single node (R).
+              <br>
+              <br>The distributions are currently delayed according to a Pareto distribution. Lower alpha correspond to heavier tails.</li>
+            <li><em>Topology Generation</em>: Controls the arrangement and
+            number of controllers and switches in the network.</li>
+          </ul>
+        </section>
+      </div>
+      <!--row-fluid marketing-->
+      <hr>
+      <div class="row-fluid marketing">
+        <section id="demo">
+          <div class="page-header">
+             <h1>How Long Until Convergence?</h1>
+          </div>
+          <div id="plot">
+            <br><span class="graph-label">CDF of Time to Convergence</span>
+            <br>
+            <br>
+            <div id="tcdf"></div> <span class="big-axis-label">Time After Network Event (ms)</span>
+          </div>
+          <div class="show-grid nrwpanel" id="column1">
+            <br> <strong>Accuracy:</strong>  <span class="slidewrap" id="Islider">0</span> points
+            <br>
+            <div class="jqslider ui-slider ui-slider-horizontal ui-widget ui-widget-content ui-corner-all" id="it-jsslider">
+              <a class="ui-slider-handle ui-state-default ui-corner-all" href="#" style="left: 16.10738255033557%;"></a>
+            </div>
+            <div class="span3" id="latencystat">
+              <div id="statfloat">
+                <table id="stats" class="table">
+                  <tr>
+                    <th></th>
+                    <th>Median</th>
+                    <th>99.9th %ile</th>
+                  </tr>
+                  <tr>
+                    <td>Traditional</td>
+                    <td><span id="traditional_latency50pct">0</span> ms</td>
+                    <td><span id="traditional_latency999pct">0</span> ms</td>
+                  </tr>
+                  <tr>
+                    <td>Single</td>
+                    <td><span id="single_latency50pct">0</span> ms</td>
+                    <td><span id="single_latency999pct">0</span> ms</td>
+                  </tr>
+                  <tr>
+                    <td>1PC</td>
+                    <td><span id="onepc_latency50pct">0</span> ms</td>
+                    <td><span id="onepc_latency999pct">0</span> ms</td>
+                  </tr>
+                  <tr>
+                    <td>2PC</td>
+                    <td><span id="twopc_latency50pct">0</span> ms</td>
+                    <td><span id="twopc_latency999pct">0</span> ms</td>
+                  </tr>
+                  <tr>
+                    <td>Paxos</td>
+                    <td><span id="paxos_latency50pct">0</span> ms</td>
+                    <td><span id="paxos_latency999pct">0</span> ms</td>
+                  </tr>
+                </table>
+                <div id="checkbox_container">
+                  Consistent Updates: <input id="consistent_updates_toggle" type="checkbox" onclick="updateConvergenceTime()"/>
+                  <br>
+                  Print ALL THE DATA: <input id="print_all_the_data_toggle" type="checkbox"/>
+                </div>
+                <br>
+                <input id="refresh_button" type="button" value="Refresh" onclick="updateConvergenceTime()"/>
+              </div>
+            </div>
+          </div>
+          <div class="pareto-title span7"> <strong>Operation Latency</strong>: Pareto Distributed CDFs</div>
+          <div id="column2">
+            <div class="small-graph-panel"> <span class="graph-label-small">W: Write Latency</span>
+              <div class="distribution" id="wcontainer"></div> <span class="axis-label">Latency (ms)</span>
+            </div>
+            <div class="small-graph-param-panel"> <span class="alphalabel">𝛼</span>
+
+              <div class="ui-slider ui-slider-horizontal ui-widget ui-widget-content ui-corner-all alpha-jqslider" id="wa-jsslider">
+                <a class="ui-slider-handle ui-state-default ui-corner-all alphaslide" href="#"></a>
+              </div> <span id="walpha">5</span>
+              <br> <span class="xminlabel">x<sub>min</sub></span>
+
+              <div class="ui-slider ui-slider-horizontal ui-widget ui-widget-content ui-corner-all xmin-jqslider" id="wx-jsslider">
+                <a class="ui-slider-handle ui-state-default ui-corner-all xminslide" href="#"></a>
+              </div> <span id="wxmin">1</span>
+              <br>Median: <span id="wlatency50pct">0</span> ms, 99.9th %ile: <span id="wlatency999pct">0</span> ms
+              <br>
+              <br>
+            </div>
+            <div class="small-graph-panel"> <span class="graph-label-small">P<sub>c</sub>: Network Latency</span>
+
+              <div class="distribution" id="pccontainer"></div> <span class="axis-label">Latency (ms)</span>
+
+            </div>
+            <div class="small-graph-param-panel"> <span class="alphalabel">𝛼</span>
+
+              <div class="alpha-jqslider ui-slider ui-slider-horizontal ui-widget ui-widget-content ui-corner-all" id="pca-jsslider">
+                <a class="ui-slider-handle ui-state-default ui-corner-all alphaslide" href="#"></a>
+              </div> <span id="pcalpha">5</span>
+              <br> <span class="xminlabel">x<sub>min</sub></span>
+
+              <div class="ui-slider ui-slider-horizontal ui-widget ui-widget-content ui-corner-all xmin-jqslider" id="pcx-jsslider">
+                <a class="ui-slider-handle ui-state-default ui-corner-all xminslide" href="#"></a>
+              </div> <span id="pcxmin">1</span>
+              <br>Median: <span id="pclatency50pct">0</span> ms, 99.9th %ile: <span id="pclatency999pct">0</span> ms
+              <br>
+              <br>
+            </div>
+          </div>
+          <div id="column3">
+            <div class="small-graph-panel"> <span class="graph-label-small">R: Read Latency</span>
+
+              <div class="distribution" id="rcontainer"></div> <span class="axis-label">Latency (ms)</span>
+
+            </div>
+            <div class="small-graph-param-panel"> <span class="alphalabel">𝛼</span>
+
+              <div class="alpha-jqslider ui-slider ui-slider-horizontal ui-widget ui-widget-content ui-corner-all" id="ra-jsslider">
+                <a class="ui-slider-handle ui-state-default ui-corner-all alphaslide" href="#"></a>
+              </div> <span id="ralpha">5</span>
+              <br> <span class="xminlabel">x<sub>min</sub></span>
+
+              <div class="ui-slider ui-slider-horizontal ui-widget ui-widget-content ui-corner-all xmin-jqslider" id="rx-jsslider">
+                <a class="ui-slider-handle ui-state-default ui-corner-all xminslide" href="#"></a>
+              </div> <span id="rxmin">1</span>
+              <br>Median: <span id="rlatency50pct">0</span> ms, 99.9th %ile: <span id="rlatency999pct">0</span> ms
+              <br>
+              <br>
+            </div>
+            <div class="small-graph-panel"> <span class="graph-label-small">P<sub>s</sub>: Network Latency</span>
+
+              <div class="distribution" id="pscontainer"></div> <span class="axis-label">Latency (ms)</span>
+
+            </div>
+            <div class="small-graph-param-panel"> <span class="alphalabel">𝛼</span>
+
+              <div class="alpha-jqslider ui-slider ui-slider-horizontal ui-widget ui-widget-content ui-corner-all" id="psa-jsslider">
+                <a class="ui-slider-handle ui-state-default ui-corner-all alphaslide" href="#"></a>
+              </div> <span id="psalpha">5</span>
+              <br> <span class="xminlabel">x<sub>min</sub></span>
+
+              <div class="ui-slider ui-slider-horizontal ui-widget ui-widget-content ui-corner-all xmin-jqslider" id="psx-jsslider">
+                <a class="ui-slider-handle ui-state-default ui-corner-all xminslide" href="#"></a>
+              </div> <span id="psxmin">1</span>
+              <br>Median: <span id="pslatency50pct">0</span> ms, 99.9th %ile: <span id="pslatency999pct">0</span> ms
+              <br>
+              <br>
+            </div>
+          </div>
+          <script type="text/javascript">
+            var p = [];
+            var jqueryLoaded = false;
+            var topoLoaded = false;
+            document.observe('dom:loaded', function () {
+              jQuery("#it-jsslider").slider({
+                min: 100,
+                max: 5000,
+                value: 2500,
+                change: function (event, ui) {
+                  editIterations(ui.value);
+                }
+              });
+              jQuery("#wa-jsslider").slider({
+                min: 1000,
+                max: 10000,
+                value: 3350,
+                change: function (event, ui) {
+                  editWAlpha(ui.value / 1000);
+                }
+              });
+              jQuery("#ra-jsslider").slider({
+                min: 1000,
+                max: 10000,
+                value: 3800,
+                change: function (event, ui) {
+                  editRAlpha(ui.value / 1000);
+                }
+              });
+              jQuery("#pca-jsslider").slider({
+                min: 1000,
+                max: 10000,
+                value: 2500,
+                change: function (event, ui) {
+                  editPcAlpha(ui.value / 1000);
+                }
+              });
+              jQuery("#psa-jsslider").slider({
+                min: 1000,
+                max: 10000,
+                value: 2500,
+                change: function (event, ui) {
+                  editPsAlpha(ui.value / 1000);
+                }
+              });
+              jQuery("#wx-jsslider").slider({
+                min: 100,
+                max: 5000,
+                value: 1680,
+                change: function (event, ui) {
+                  editWXmin(ui.value / 1000);
+                }
+              });
+              jQuery("#rx-jsslider").slider({
+                min: 100,
+                max: 5000,
+                value: 1550,
+                change: function (event, ui) {
+                  editRXmin(ui.value / 1000);
+                }
+              });
+              jQuery("#pcx-jsslider").slider({
+                min: 100,
+                max: 5000,
+                value: 500,
+                change: function (event, ui) {
+                  editPcXmin(ui.value / 1000);
+                }
+              });
+              jQuery("#psx-jsslider").slider({
+                min: 100,
+                max: 5000,
+                value: 500,
+                change: function (event, ui) {
+                  editPsXmin(ui.value / 1000);
+                }
+              });
+              editIterations(2500);
+              editWAlpha(3.350);
+              editRAlpha(3.800);
+              editPcAlpha(2.500);
+              editPsAlpha(2.500);
+              editWXmin(1.680);
+              editRXmin(1.550);
+              editPcXmin(0.500);
+              editPsXmin(0.500);
+              updateWriteLatency();
+              updateReadLatency();
+              updateControllerNetworkLatency();
+              updateSwitchNetworkLatency();
+              jqueryLoaded = true;
+              updateConvergenceTime();
+            });
+
+            function updateWriteLatency() {
+              var W_a = document.getElementById("walpha").innerHTML;
+              var W_x = document.getElementById("wxmin").innerHTML;
+              document.getElementById("wlatency50pct").innerHTML = roundNumber(calculate_pareto_percentile(W_a, W_x, .5), 2);
+              document.getElementById("wlatency999pct").innerHTML = roundNumber(calculate_pareto_percentile(W_a, W_x, .999), 2);
+            }
+
+            function updateReadLatency() {
+              var R_a = document.getElementById("ralpha").innerHTML;
+              var R_x = document.getElementById("rxmin").innerHTML;
+              document.getElementById("rlatency50pct").innerHTML = roundNumber(calculate_pareto_percentile(R_a, R_x, .5), 2);
+              document.getElementById("rlatency999pct").innerHTML = roundNumber(calculate_pareto_percentile(R_a, R_x, .999), 2);
+            }
+
+            function updateControllerNetworkLatency() {
+              var Pc_a = document.getElementById("pcalpha").innerHTML;
+              var Pc_x = document.getElementById("pcxmin").innerHTML;
+              document.getElementById("pclatency50pct").innerHTML = roundNumber(calculate_pareto_percentile(Pc_a, Pc_x, .5), 2);
+              document.getElementById("pclatency999pct").innerHTML = roundNumber(calculate_pareto_percentile(Pc_a, Pc_x, .999), 2);
+            }
+
+            function updateSwitchNetworkLatency() {
+              var Ps_a = document.getElementById("psalpha").innerHTML;
+              var Ps_x = document.getElementById("psxmin").innerHTML;
+              document.getElementById("pslatency50pct").innerHTML = roundNumber(calculate_pareto_percentile(Ps_a, Ps_x, .5), 2);
+              document.getElementById("pslatency999pct").innerHTML = roundNumber(calculate_pareto_percentile(Ps_a, Ps_x, .999), 2);
+            }
+
+            // Class to give us some semblance of separation of concerns
+            function DataMutator(N, d3switches, d3links, cu)
+            {
+              this.N = N;
+              this.d3switches = d3switches;
+              this.d3links = d3links;
+              this.consistent_updates = cu;
+              this.W_a = parseFloat(document.getElementById("walpha").innerHTML);
+              this.R_a = parseFloat(document.getElementById("ralpha").innerHTML);
+              this.Pc_a = parseFloat(document.getElementById("pcalpha").innerHTML);
+              this.Ps_a = parseFloat(document.getElementById("psalpha").innerHTML);
+              this.W_x = parseFloat(document.getElementById("wxmin").innerHTML);
+              this.R_x = parseFloat(document.getElementById("rxmin").innerHTML);
+              this.Pc_x = parseFloat(document.getElementById("pcxmin").innerHTML);
+              this.Ps_x = parseFloat(document.getElementById("psxmin").innerHTML);
+
+              function computeSamples(replication_scheme) {
+                var samples = replication_scheme(this.num_core_switches_to_update,
+                                                 this.N, this.W_a, this.R_a, this.Pc_a, this.Ps_a,
+                                                 this.W_x, this.R_x, this.Pc_x, this.Ps_x);
+                if (this.consistent_updates) {
+                  samples = applyAtomicCommit(replication_scheme, samples);
+                }
+                return samples;
+              }
+
+              function applyAtomicCommit(replication_scheme, samples) {
+                /*
+                 * This commit applies the replication algorithm again, but
+                 * this time to only perform the atomic commit to the single
+                 * ingress switch.
+                 * - replication_scheme is the replication algorithm
+                 *   (from replication.js)
+                 * - data is a set of samples
+                 */
+                var commit_samples = replication_scheme(this.num_edge_switches_to_update,
+                                                         this.N, this.W_a, this.R_a, this.Pc_a, this.Ps_a,
+                                                         this.W_x, this.R_x, this.Pc_x, this.Ps_x, true);
+                if (samples.length == 0) {
+                  return commit_samples;
+                }
+                if (samples.length != commit_samples.length) {
+                  throw Error("Assertion Failed: samples.length != commit_samples.length" +
+                              samples + " " + commit_samples);
+                }
+                /*
+                  // if both samples and commit_samples, merge them together
+                  return samples.map(function (v,i){return v + commit_samples[i]});
+                */
+
+                for (var i=0; i<samples.length; i++) {
+                  var old_sample = samples[i];
+                  var new_sample = commit_samples[i];
+                  samples[i] = [old_sample[0]+new_sample[0], old_sample[1]+new_sample[1], old_sample[2]+new_sample[2], new_sample[0]]
+                }
+                return samples
+              }
+
+              this.initData = function() {
+                // N.B. we don't apply atomic commit for traditional routing
+                var no_ctrl = no_controller(this.src_to_remove, this.dest_to_remove,
+                                            this.after_matrix, this.core_switches_to_update,
+                                            this.N, this.W_a, this.R_a, this.Pc_a, this.Ps_a,
+                                            this.W_x, this.R_x, this.Pc_x, this.Ps_x);
+                this.traditional_times = no_ctrl
+                this.traditional_cdf = compute_cdf(no_ctrl);
+                this.single_samples = computeSamples(single_controller);
+                this.onepc_samples = computeSamples(one_phase_commit);
+                this.twopc_samples = computeSamples(two_phase_commit);
+                this.paxos_samples = computeSamples(paxos_commit);
+                this.single_times = this.single_samples.map(function(v){return v[0]});
+                this.onepc_times = this.onepc_samples.map(function(v){return v[0]});
+                this.twopc_times = this.twopc_samples.map(function(v){return v[0]});
+                this.paxos_times = this.paxos_samples.map(function(v){return v[0]});
+                this.single_cdf = compute_cdf(self.single_times);
+                this.onepc_cdf = compute_cdf(this.onepc_times);
+                this.twopc_cdf = compute_cdf(this.twopc_times);
+                this.paxos_cdf = compute_cdf(this.paxos_times);
+              }
+
+              /*
+               * Remove a link (could also be a link weight change; the main
+               * point is that this should cause a change in the network the
+               * controller needs to react to)
+               */
+              this.remove_link = function() {
+                if (this.d3links.length == 0) return;
+
+                /* Construct before and after network configurations */
+                var before_links = this.d3links;
+                var after_links = this.d3links.slice(0);
+                var link_to_remove = this.d3links[Math.floor(Math.random()*this.d3links.length)];
+                var src_to_remove = link_to_remove.source.id;
+                var dest_to_remove = link_to_remove.target.id;
+                for (var i=this.d3links.length-1; i>=0; i--) {
+                  var link = after_links[i];
+                  if ((link.source.id == src_to_remove && link.target.id == dest_to_remove) ||
+                      (link.source.id == dest_to_remove && link.target.id == src_to_remove)) {
+                    after_links.splice(i, 1);
+                  }
+                }
+                this.src_to_remove = src_to_remove;
+                this.dest_to_remove = dest_to_remove;
+                this.before_matrix = converged_link_matrix(this.d3switches, before_links);
+                this.after_matrix = converged_link_matrix(this.d3switches, after_links);
+
+                this.core_switches_to_update = switches_to_update(this.before_matrix, this.after_matrix);
+                this.num_core_switches_to_update = this.core_switches_to_update.length;
+                // Don't update the ``ingress'' switch until the atomic commit
+                // point
+                if (this.consistent_updates) {
+                  if (this.num_core_switches_to_update != 0) {
+                    this.num_edge_switches_to_update = 1;
+                    this.num_core_switches_to_update -= 1;
+                  } else {
+                    // Already converged (although controllers do run
+                    // replication scheme to decide this, the network itself
+                    // is already converged)
+                    this.num_edge_switches_to_update = 0;
+                  }
+                }
+              }
+
+              this.remove_link();
+              this.initData();
+
+              return this;
+            }
+
+            function updateConvergenceTime()
+            {
+              if (!jqueryLoaded || !topoLoaded) return;
+              var N = 3; // XXX myNetwork.getNumControllers();
+              var d3switches = myNetwork.getSwitches();
+              var d3links = myNetwork.getLinks();
+              var cu = document.getElementById("consistent_updates_toggle").checked;
+              var data = DataMutator(N, d3switches, d3links, cu);
+              updateResultsTable(data);
+              Flotr.draw(
+                $('tcdf'), [{
+                  data: data.traditional_cdf,
+                  label: 'Fully Distributed',
+                  color: 'blue'
+                }, {
+                  data: data.single_cdf,
+                  label: 'Single Controller',
+                  color: 'red'
+                }, {
+                  data: data.onepc_cdf,
+                  label: 'Master/Backup(s) with One-Phase Commit',
+                  color: '#c4e5c1'
+                }, {
+                  data: data.twopc_cdf,
+                  label: 'Master/Backup(s) with Two-Phase Commit',
+                  color: '#e988a1'
+                }, {
+                  data: data.paxos_cdf,
+                  label: 'Paxos Replicated State Machines',
+                  color: '#6dc066'
+                }
+              ], {
+                legend: {
+                  position: 'se',
+                  margin: 30
+                },
+                xaxis: {
+                  title: 'Time After Event (ms)',
+                  min: 0,
+                  max: 30,
+                },
+                yaxis: {
+                  autoscaleMargin: 0
+                },
+                mouse: {
+                  track: true,
+                  //lineColor: 'blue',
+                  sensibility: 1,
+                  // => The smaller this value, the more precise you can point
+                  trackDecimals: 3,
+                  trackDecimals: 3,
+                  trackFormatter: function (obj) {
+                    return 't = ' + roundNumber(obj.x, 2) + ', Pr = ' + obj.y;
+                  }
+                },
+              });
+              jQuery(".flotr-legend table").css({
+                "height": "100px",
+                "width": "340px"
+              });
+              jQuery(".flotr-legend-color-box div").css({
+                "border": "0px",
+                "padding": "0px",
+                "margin-left": "5px"
+              });
+              jQuery(".flotr-legend-label").css({
+                "font-size": "16px",
+                "color": "#444444"
+              });
+            }
+
+            function updateResultsTable(data) {
+              document.getElementById("traditional_latency50pct").innerHTML =
+                  roundNumber(calculate_percentile(data.traditional_times, .5), 2);
+              document.getElementById("traditional_latency999pct").innerHTML =
+                  roundNumber(calculate_percentile(data.traditional_times, .999), 2);
+              document.getElementById("single_latency50pct").innerHTML =
+                  roundNumber(calculate_percentile(data.single_times, .5), 2);
+              document.getElementById("single_latency999pct").innerHTML =
+                  roundNumber(calculate_percentile(data.single_times, .999), 2);
+              document.getElementById("onepc_latency50pct").innerHTML =
+                  roundNumber(calculate_percentile(data.onepc_times, .5), 2);
+              document.getElementById("twopc_latency50pct").innerHTML =
+                  roundNumber(calculate_percentile(data.twopc_times, .5), 2);
+              document.getElementById("paxos_latency50pct").innerHTML =
+                  roundNumber(calculate_percentile(data.paxos_times, .5), 2);
+              document.getElementById("onepc_latency999pct").innerHTML =
+                  roundNumber(calculate_percentile(data.onepc_times, .999), 2);
+              document.getElementById("twopc_latency999pct").innerHTML =
+                  roundNumber(calculate_percentile(data.twopc_times, .999), 2);
+              document.getElementById("paxos_latency999pct").innerHTML =
+                  roundNumber(calculate_percentile(data.paxos_times, .999), 2);
+
+              var print_all_the_data = document.getElementById("print_all_the_data_toggle").checked;
+              if (print_all_the_data) {
+                var all_the_data = document.getElementById("all_the_data");
+                all_the_data.innerHTML = "";
+                for (var i=0; i<data.traditional_cdf.length; i++) { all_the_data.innerHTML += data.traditional_cdf[i][0] + " " + data.traditional_cdf[i][1] + "<br>"; }
+                all_the_data.innerHTML += "NEXT<br>"
+                for (var i=0; i<data.single_cdf.length; i++) { all_the_data.innerHTML += data.single_cdf[i][0] + " " + data.single_cdf[i][1] + "<br>"; }
+                all_the_data.innerHTML += "NEXT<br>"
+                for (var i=0; i<data.onepc_cdf.length; i++) { all_the_data.innerHTML += data.onepc_cdf[i][0] + " " + data.onepc_cdf[i][1] + "<br>"; }
+                all_the_data.innerHTML += "NEXT<br>"
+                for (var i=0; i<data.twopc_cdf.length; i++) { all_the_data.innerHTML += data.twopc_cdf[i][0] + " " + data.twopc_cdf[i][1] + "<br>"; }
+                all_the_data.innerHTML += "NEXT<br>"
+                for (var i=0; i<data.paxos_cdf.length; i++) { all_the_data.innerHTML += data.paxos_cdf[i][0] + " " + data.paxos_cdf[i][1] + "<br>"; }
+                all_the_data.innerHTML += "NEXT<br>"
+              }
+
+              var single_medians = [];
+              single_medians[0] = calculate_percentile(data.single_samples.map(function(v){return v[0]}), .5);
+              single_medians[1] = calculate_percentile(data.single_samples.map(function(v){return v[1]}), .5);
+              single_medians[2] = calculate_percentile(data.single_samples.map(function(v){return v[2]}), .5);
+              single_medians[3] = calculate_percentile(data.single_samples.map(function(v){return v[3]}), .5);
+              console.log("Single: "+single_medians);
+
+              var onepc_medians = [];
+              onepc_medians[0] = calculate_percentile(data.onepc_samples.map(function(v){return v[0]}), .5);
+              onepc_medians[1] = calculate_percentile(data.onepc_samples.map(function(v){return v[1]}), .5);
+              onepc_medians[2] = calculate_percentile(data.onepc_samples.map(function(v){return v[2]}), .5);
+              onepc_medians[3] = calculate_percentile(data.onepc_samples.map(function(v){return v[3]}), .5);
+              console.log("1PC: "+onepc_medians);
+
+              var twopc_medians = [];
+              twopc_medians[0] = calculate_percentile(data.twopc_samples.map(function(v){return v[0]}), .5);
+              twopc_medians[1] = calculate_percentile(data.twopc_samples.map(function(v){return v[1]}), .5);
+              twopc_medians[2] = calculate_percentile(data.twopc_samples.map(function(v){return v[2]}), .5);
+              twopc_medians[3] = calculate_percentile(data.twopc_samples.map(function(v){return v[3]}), .5);
+              console.log("2PC: "+twopc_medians);
+
+              var paxos_medians = [];
+              paxos_medians[0] = calculate_percentile(data.paxos_samples.map(function(v){return v[0]}), .5);
+              paxos_medians[1] = calculate_percentile(data.paxos_samples.map(function(v){return v[1]}), .5);
+              paxos_medians[2] = calculate_percentile(data.paxos_samples.map(function(v){return v[2]}), .5);
+              paxos_medians[3] = calculate_percentile(data.paxos_samples.map(function(v){return v[3]}), .5);
+              console.log("Paxos: "+paxos_medians);
+
+              console.log("\n");
+
+              var single_percentages = single_medians.map(function(v){return (v/single_medians[0]*100)+"%";});
+              var onepc_percentages = onepc_medians.map(function(v){return (v/onepc_medians[0]*100)+"%";});
+              var twopc_percentages = twopc_medians.map(function(v){return (v/twopc_medians[0]*100)+"%";});
+              var paxos_percentages = paxos_medians.map(function(v){return (v/paxos_medians[0]*100)+"%";});
+              console.log("Single %: "+single_percentages);
+              console.log("1PC %: "+onepc_percentages);
+              console.log("2PC %: "+twopc_percentages);
+              console.log("Paxos %: "+paxos_percentages);
+            
+              console.log("\n==========================================================\n");
+            }
+
+            function editIterations(its) {
+              document.getElementById("Islider").innerHTML = its;
+              update_max_iterations(its);
+              updateConvergenceTime();
+            }
+
+            function drawParetoCDF(alpha, xmin, container) {
+              var d1 = [];
+              for (var i = 0; i < 32; i += 0.5) {
+                d1.push([i, calc_pareto_cdf(alpha, xmin, i)]);
+              }
+              var f = Flotr.draw($(container), [d1], {
+                xaxis: {
+                  tickDecimals: 0
+                }
+              });
+              updateConvergenceTime();
+            }
+
+            function editWAlpha(alpha) {
+              document.getElementById("walpha").innerHTML = alpha;
+              var xmin = document.getElementById("wxmin").innerHTML;
+              drawParetoCDF(alpha, xmin, "wcontainer");
+              updateWriteLatency();
+            }
+
+            function editRAlpha(alpha) {
+              document.getElementById("ralpha").innerHTML = alpha;
+              var xmin = document.getElementById("rxmin").innerHTML;
+              drawParetoCDF(alpha, xmin, "rcontainer");
+              updateReadLatency();
+            }
+
+            function editPcAlpha(alpha) {
+              document.getElementById("pcalpha").innerHTML = alpha;
+              var xmin = document.getElementById("pcxmin").innerHTML;
+              drawParetoCDF(alpha, xmin, "pccontainer");
+              updateControllerNetworkLatency();
+            }
+
+            function editPsAlpha(alpha) {
+              document.getElementById("psalpha").innerHTML = alpha;
+              var xmin = document.getElementById("psxmin").innerHTML;
+              drawParetoCDF(alpha, xmin, "pscontainer");
+              updateSwitchNetworkLatency();
+            }
+
+            function editWXmin(xmin) {
+              document.getElementById("wxmin").innerHTML = xmin;
+              var alpha = document.getElementById("walpha").innerHTML;
+              drawParetoCDF(alpha, xmin, "wcontainer");
+              updateWriteLatency();
+            }
+
+            function editRXmin(xmin) {
+              document.getElementById("rxmin").innerHTML = xmin;
+              var alpha = document.getElementById("ralpha").innerHTML;
+              drawParetoCDF(alpha, xmin, "rcontainer");
+              updateReadLatency();
+            }
+
+            function editPcXmin(xmin) {
+              document.getElementById("pcxmin").innerHTML = xmin;
+              var alpha = document.getElementById("pcalpha").innerHTML;
+              drawParetoCDF(alpha, xmin, "pccontainer");
+              updateControllerNetworkLatency();
+            }
+
+            function editPsXmin(xmin) {
+              document.getElementById("psxmin").innerHTML = xmin;
+              var alpha = document.getElementById("psalpha").innerHTML;
+              drawParetoCDF(alpha, xmin, "pscontainer");
+              updateSwitchNetworkLatency();
+            }
+          </script>
+        </section>
+      </div> <!--row-fluid marketing-->
+      <div class="row-fluid marketing">
+        <div class="span3">
+          <h4><strong id="topo_gen_title">Topology Generator</strong></h4>
+          <br>
+          <input type="hidden" name="option" value="" id="mode_select" />
+          <div class="btn-group" id="mode_select_grp" data-toggle="buttons-radio">
+            <button id="add_mode" type="button" data-toggle="button" name="option" value="1" class="btn active">Add</button>
+            <button id="remove_mode" type="button" data-toggle="button" name="option" value="2" class="btn">Remove</button>
+          </div>
+          <br/>
+          <br/>
+          <input type="hidden" name="option" value="" id="entity_select" />
+          <div class="btn-group" id="entity_select_grp" data-toggle="buttons-radio">
+            <button id="switch_mode" type="button" data-toggle="button" name="option" value="circle" class="btn active">Switch</button>
+            <button id="controller_mode" type="button" data-toggle="button" name="option" value="square" class="btn">Controller</button>
+            <button id="link_mode" type="button" data-toggle="button" name="option" value="link" class="btn">Link</button>
+          </div>
+          <h5>Pre-defined Topology:</h5>
+          <div id="topology_selection" class="control">
+          <select id="topology">
+            <option value="4-pod-fattree.json">4-pod FatTree</option>
+            <option value="8-switch-ring.json">8-switch Ring</option>
+            <option value="4-switch-mesh.json">4-switch Mesh</option>
+            <option value="8-switch-mesh.json">8-switch Mesh</option>
+            <option value="20-pod-fattree.json">20-pod FatTree</option>
+          </select>
+          </div>
+        </div><!-- span2 -->
+        <div class="span9" id="topo_gen">
+          <div id="main" role="main">
+            <div id="vis"></div>
+          </div>
+          <!-- TODO: re-enable button press handlers
+          <script language="JavaScript" src="./graph.js" type="text/javascript"></script>
+          <script type="text/javascript">
+            document.observe('dom:loaded', function () {
+              // TODO(cs): use d3 instead of this imperative mess
+              var btn_grps = ["entity_select_grp"]; // ["mode_select", "entity_select"];
+              for (i = 0; i < btn_grps.length; i++) {
+                var btns = $(btn_grps[i]).children;
+                for (j = 0; j < btns.length; j++) {
+                  btns[j].addEventListener('click', function() {
+                    entityChange(this.value);
+                  });
+                }
+              }
+            });
+          </script>-->
+        </div><!-- span9 -->
+      <hr>
+      <div class="row-fluid marketing">
+        <section id="questions">
+          <div class="page-header">
+             <h1>Questions</h1>
+          </div>
+          <div id="all_the_data">All the data goes here!</div> 
+          <p>If you have any questions, please drop us a line at
+            <script type="text/javascript">
+              // protected email script by Joe Maller
+              // JavaScripts available at http://www.joemaller.com
+              // this script is free to use and distribute
+              // but please credit me and/or link to my site
+
+              var emailE = ('cs@' + 'cs.berkeley.edu');
+              document.write('<a href="mailto:' + emailE + '">' + emailE + '<\/a>');
+            </script>
+          </p>
+        </section>
+      </div>
+      <hr>
+      <div class="footer">The layout and initial simulator for this page were shamelessly stolen from <a href="http://www.bailis.org/">Peter Bailis</a> and the <a href="http://pbs.cs.berkeley.edu/">PBS</a> crew.
+        <br>
+        <br>
+        The page's design and layout are built with <a href="http://twitter.github.com/bootstrap/" target="_blank">Bootstrap</a>
+        and its provided sample code. <a href="http://solutoire.com/flotr/" target="_blank">Flotr</a>
+        powers the graph visualization, and <a href="http://d3js.org">d3</a>
+        runs the topology generator. Some
+        <a href="http://jqueryui.com/" target="_blank">jQuery UI</a>is also thrown in for good measure.
+      </div>
+    </div> <!-- /container -->
+    <!-- Le javascript================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="./assets/js/bootstrap-transition.js"></script>
+    <script src="./assets/js/bootstrap-alert.js"></script>
+    <script src="./assets/js/bootstrap-modal.js"></script>
+    <script src="./assets/js/bootstrap-dropdown.js"></script>
+    <script src="./assets/js/bootstrap-scrollspy.js"></script>
+    <script src="./assets/js/bootstrap-tab.js"></script>
+    <script src="./assets/js/bootstrap-tooltip.js"></script>
+    <script src="./assets/js/bootstrap-popover.js"></script>
+    <script src="./assets/js/bootstrap-button.js"></script>
+    <script src="./assets/js/bootstrap-collapse.js"></script>
+    <script src="./assets/js/bootstrap-carousel.js"></script>
+    <script src="./assets/js/bootstrap-typeahead.js"></script>
+  </body>
+
+</html>
