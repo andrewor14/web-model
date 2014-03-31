@@ -2,12 +2,23 @@
 <html>
   <head>
     <meta charset="utf-8">
+    <script type="text/javascript" src="assets/js/jquery/jquery-2.1.0.min.js"></script>
+    <script type="text/javascript" src="assets/js/jquery/ui/jquery.ui.core.min.js"></script>
+    <script type="text/javascript" src="assets/js/jquery/ui/jquery.ui.widget.min.js"></script>
+    <script type="text/javascript" src="assets/js/jquery/ui/jquery.ui.mouse.min.js"></script>
+    <script type="text/javascript" src="assets/js/jquery/ui/jquery.ui.slider.min.js"></script>
+    <script type="text/javascript" src="assets/js/bootstrap/bootstrap.min.js"></script>
+    <script type="text/javascript" src="assets/js/flotr/lib/prototype-1.6.0.2.js"></script>
+    <script type="text/javascript" src="assets/js/flotr/lib/canvas2image.js"></script>
+    <script type="text/javascript" src="assets/js/flotr/lib/canvastext.js"></script>
+    <script type="text/javascript" src="assets/js/flotr/flotr-0.2.0-alpha.js"></script>
+    <script type="text/javascript" src="model/floyd-warshall.js"></script>
+    <script type="text/javascript" src="model/misc.js"></script>
+    <script type="text/javascript" src="model/replication.js"></script>
+    <script type="text/javascript" src="index.js"></script>
     <link href="assets/css/bootstrap/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/css/index.css" rel="stylesheet">
-    <script src="assets/js/jquery-2.1.0.min.js"></script>
-    <script>
-      
-    </script>
+    <link href="assets/css/jquery/jquery-ui.min.css" rel="stylesheet">
+    <link href="index.css" rel="stylesheet">
   </head>
   <body>
     
@@ -77,12 +88,147 @@
     
     <!-- Demo -->
     <div class="container">
-      <section id="instructions">
+      <section id="demo">
         <h1 class="sub-header">How Long Until Convergence?</h1>
         <div id="plot">
-          <div id="graph-label">CDF of Time to Convergence</div>
+          <div id="graph-title">CDF of Time to Convergence</div>
           <div id="tcdf"></div>
-          <div class="big-axis-label">Time After Network Event (ms)</div>
+          <div class="axis-label">Time After Network Event (ms)</div>
+          <div class="row">
+            <div id="parameter-container" class="col-md-7">
+              <div class="plot-sub-header">Operational Latency</div>
+              <div class="plot-sub-sub-header">Parameters modeled with Pareto distributions</div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="small-graph-panel">
+                    <div class="small-graph-title">R: Read Latency</div>
+                    <div id="rcontainer" class="pareto-cdf"></div>
+                    <div class="small-axis-label">Latency (ms)</div>
+                  </div>
+                  <div class="slider-container">
+                    <span class="slider-alpha-label">𝛼</span>
+                    <div id="ralpha-slider" class="slider"></div>
+                    <span id="ralpha-value" class="slider-value-label"></span>
+                  </div>
+                  <div class="slider-container">
+                    <span class="slider-xmin-label">x<sub>min</sub> </span>
+                    <div id="rxmin-slider" class="slider"></div>
+                    <span id="rxmin-value" class="slider-value-label"></span>
+                  </div>
+                  <div class="parameter-percentiles">
+                    Median: <span id="rlatency50pct">0</span> ms, 99.9th %ile:
+                    <span id="rlatency999pct">0</span> ms
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="small-graph-panel">
+                    <div class="small-graph-title">W: Write Latency</div>
+                    <div id="wcontainer" class="pareto-cdf"></div>
+                    <div class="small-axis-label">Latency (ms)</div>
+                  </div>
+                  <div class="slider-container">
+                    <span class="slider-alpha-label">𝛼</span>
+                    <div id="walpha-slider" class="slider"></div>
+                    <span id="walpha-value" class="slider-value-label"></span>
+                  </div>
+                  <div class="slider-container">
+                    <span class="slider-xmin-label">x<sub>min</sub> </span>
+                    <div id="wxmin-slider" class="slider"></div>
+                    <span id="wxmin-value" class="slider-value-label"></span>
+                  </div>
+                  <div class="parameter-percentiles">
+                    Median: <span id="wlatency50pct">0</span> ms, 99.9th %ile:
+                    <span id="wlatency999pct">0</span> ms
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="small-graph-panel">
+                    <div class="small-graph-title">P<sub>s</sub>: Network Latency</div>
+                    <div id="pscontainer" class="pareto-cdf"></div>
+                    <div class="small-axis-label">Latency (ms)</div>
+                  </div>
+                  <div class="slider-container">
+                    <span class="slider-alpha-label">𝛼</span>
+                    <div id="psalpha-slider" class="slider"></div>
+                    <span id="psalpha-value" class="slider-value-label"></span>
+                  </div>
+                  <div class="slider-container">
+                    <span class="slider-xmin-label">x<sub>min</sub> </span>
+                    <div id="psxmin-slider" class="slider"></div>
+                    <span id="psxmin-value" class="slider-value-label"></span>
+                  </div>
+                  <div class="parameter-percentiles">
+                    Median: <span id="pslatency50pct">0</span> ms, 99.9th %ile:
+                    <span id="pslatency999pct">0</span> ms
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="small-graph-panel">
+                    <div class="small-graph-title">P<sub>c</sub>: Network Latency</div>
+                    <div id="pccontainer" class="pareto-cdf"></div>
+                    <div class="small-axis-label">Latency (ms)</div>
+                  </div>
+                  <div class="slider-container">
+                    <span class="slider-alpha-label">𝛼</span>
+                    <div id="pcalpha-slider" class="slider"></div>
+                    <span id="pcalpha-value" class="slider-value-label"></span>
+                  </div>
+                  <div class="slider-container">
+                    <span class="slider-xmin-label">x<sub>min</sub> </span>
+                    <div id="pcxmin-slider" class="slider"></div>
+                    <span id="pcxmin-value" class="slider-value-label"></span>
+                  </div>
+                  <div class="parameter-percentiles">
+                    Median: <span id="pclatency50pct">0</span> ms, 99.9th %ile:
+                    <span id="pclatency999pct">0</span> ms
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div id="iterations-slider-container">
+                <div>
+                  <span class="bold">Accuracy: </span>
+                  <span id="iterations-value">0</span> points
+                </div>
+                <div id="iterations-slider" class="slider"></div>
+              </div>
+              <table id="convergence-percentiles" class="table">
+                <tr>
+                  <th></th>
+                  <th>Median</th>
+                  <th>99.9th %ile</th>
+                </tr>
+                <tr>
+                  <td>Traditional</td>
+                  <td><span id="traditional_latency50pct">0</span> ms</td>
+                  <td><span id="traditional_latency999pct">0</span> ms</td>
+                </tr>
+                <tr>
+                  <td>Single</td>
+                  <td><span id="single_latency50pct">0</span> ms</td>
+                  <td><span id="single_latency999pct">0</span> ms</td>
+                </tr>
+                <tr>
+                  <td>1PC</td>
+                  <td><span id="onepc_latency50pct">0</span> ms</td>
+                  <td><span id="onepc_latency999pct">0</span> ms</td>
+                </tr>
+                <tr>
+                  <td>2PC</td>
+                  <td><span id="twopc_latency50pct">0</span> ms</td>
+                  <td><span id="twopc_latency999pct">0</span> ms</td>
+                </tr>
+                <tr>
+                  <td>Paxos</td>
+                  <td><span id="paxos_latency50pct">0</span> ms</td>
+                  <td><span id="paxos_latency999pct">0</span> ms</td>
+                </tr>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
       <div class="section-divider"></div>

@@ -1,1 +1,4 @@
 *.komodoproject
+*.iml
+.idea
+*DS_STORE

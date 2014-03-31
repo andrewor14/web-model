@@ -1,0 +1,197 @@
+/* -------------------- *
+ * Style for index.html *
+ * -------------------- */
+
+h1, h3 {
+  font-family: 'Crete Round', serif;
+}
+
+#navigation {
+  padding: 15px 0 5px 0;
+}
+
+#navigation-title {
+  margin: 0px;
+}
+
+#title-container {
+  background-color: #022b6a;
+  padding-top: 120px;
+  text-align: center;
+}
+
+#title-container h1 {
+  color: white;
+  font-size: 55pt;
+}
+
+#title-container p {
+  color: white;
+  padding-top: 15px;
+  font-family: 'Crete Round', serif;
+  font-size: 20pt;
+  font-style: italic;
+}
+
+.control {
+  padding-left: 25px;
+}
+
+.control-header {
+  font-style: italic;
+  font-weight: bold;
+}
+
+.section-divider {
+  padding-bottom: 9px;
+  margin: 40px 0 20px 0;
+  border-bottom: 1px solid #ccc;
+}
+
+.sub-header {
+  padding-bottom: 20px;
+}
+
+.bold {
+  font-weight: bold;
+}
+
+.footer {
+  color: #aaa;
+  font-size: 10pt;
+  padding-bottom: 50px;
+}
+
+.footer a {
+  color: #88e;
+}
+
+/*
+ * Plot-specific style
+ */
+
+#tcdf {
+  width: 1140px;
+  height: 320px;
+}
+
+#plot div {
+  font-family: 'Crete Round', serif;
+  text-align: center;
+}
+
+#graph-title {
+  color: #444;
+  font-size: 18pt;
+  font-style: italic;
+  font-weight: bold;
+  line-height: 20px;
+  padding: 15px 0 30px 0;
+}
+
+.axis-label {
+  color: #777;
+  font-size: 11pt;
+  padding: 10px 0 50px 0;
+}
+
+.small-axis-label {
+  color: #777;
+  font-size: 10pt;
+  padding: 5px 0 5px 0;
+}
+
+.small-graph-title {
+  color: #444;
+  font-weight: bold;
+  line-height: 20px;
+  padding: 10px 0 10px 0;
+}
+
+.small-graph-panel {
+  padding-top: 20px;
+}
+
+.plot-sub-header {
+  color: #444;
+  font-size: 16pt;
+  padding-bottom: 5px;
+  font-weight: bold;
+}
+
+.plot-sub-sub-header {
+  color: #ccc;
+  font-size: 12pt;
+  text-align: center;
+}
+
+#parameter-container {
+  margin-left: 60px;
+}
+
+.pareto-cdf {
+  height: 100px;
+  width: 300px;
+}
+
+.slider-alpha-label {
+  float: left;
+  margin: 6px 14px 0 25px;
+}
+
+.slider-xmin-label {
+  float: left;
+  margin: 6px 10px 0 12px;
+}
+
+.slider-value-label {
+  float: left;
+  margin: 6px 0 0 10px;
+}
+
+.slider-container {
+  clear: left;
+  margin-left: 25px;
+}
+
+.slider {
+  float: left;
+  height: 10px;
+  width: 160px;
+  margin-top: 10px;
+}
+
+.parameter-percentiles {
+  clear: left;
+  color: #777;
+  padding-top: 5px;
+}
+
+#iterations-slider-container {
+  margin-top: 50px;
+}
+
+#iterations-slider {
+  float: none;
+  left: calc(50% - 100px);
+  width: 200px;
+}
+
+#convergence-percentiles {
+  margin: 50px 0 0 25px;
+  width: 320px;
+}
+
+#convergence-percentiles th {
+  text-align: center;
+}
+
+/*
+ * Overridden jQuery styles
+ */
+
+#plot .ui-slider .ui-slider-handle {
+  width: 10px;
+  height: 16px;
+}
+
