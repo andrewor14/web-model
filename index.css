@@ -149,12 +149,12 @@ h1, h3 {
   margin: 6px 0 0 10px;
 }
 
-.slider-container {
+.left-slider-container {
   clear: left;
   margin-left: 25px;
 }
 
-.slider {
+.left-slider {
   float: left;
   height: 10px;
   width: 160px;
@@ -167,14 +167,15 @@ h1, h3 {
   padding-top: 5px;
 }
 
-#iterations-slider-container {
-  margin-top: 50px;
+.right-slider-container {
+  margin-top: 20px;
 }
 
-#iterations-slider {
+.right-slider {
   float: none;
   left: calc(50% - 100px);
   width: 200px;
+  margin-top: 10px;
 }
 
 #convergence-percentiles {

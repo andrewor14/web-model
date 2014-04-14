@@ -368,29 +368,29 @@
             function updateWriteLatency() {
               var W_a = document.getElementById("walpha").innerHTML;
               var W_x = document.getElementById("wxmin").innerHTML;
-              document.getElementById("wlatency50pct").innerHTML = roundNumber(calculate_pareto_percentile(W_a, W_x, .5), 2);
-              document.getElementById("wlatency999pct").innerHTML = roundNumber(calculate_pareto_percentile(W_a, W_x, .999), 2);
+              document.getElementById("wlatency50pct").innerHTML = roundNumber(calculateParetoPercentile(W_a, W_x, .5), 2);
+              document.getElementById("wlatency999pct").innerHTML = roundNumber(calculateParetoPercentile(W_a, W_x, .999), 2);
             }
 
             function updateReadLatency() {
               var R_a = document.getElementById("ralpha").innerHTML;
               var R_x = document.getElementById("rxmin").innerHTML;
-              document.getElementById("rlatency50pct").innerHTML = roundNumber(calculate_pareto_percentile(R_a, R_x, .5), 2);
-              document.getElementById("rlatency999pct").innerHTML = roundNumber(calculate_pareto_percentile(R_a, R_x, .999), 2);
+              document.getElementById("rlatency50pct").innerHTML = roundNumber(calculateParetoPercentile(R_a, R_x, .5), 2);
+              document.getElementById("rlatency999pct").innerHTML = roundNumber(calculateParetoPercentile(R_a, R_x, .999), 2);
             }
 
             function updateControllerNetworkLatency() {
               var Pc_a = document.getElementById("pcalpha").innerHTML;
               var Pc_x = document.getElementById("pcxmin").innerHTML;
-              document.getElementById("pclatency50pct").innerHTML = roundNumber(calculate_pareto_percentile(Pc_a, Pc_x, .5), 2);
-              document.getElementById("pclatency999pct").innerHTML = roundNumber(calculate_pareto_percentile(Pc_a, Pc_x, .999), 2);
+              document.getElementById("pclatency50pct").innerHTML = roundNumber(calculateParetoPercentile(Pc_a, Pc_x, .5), 2);
+              document.getElementById("pclatency999pct").innerHTML = roundNumber(calculateParetoPercentile(Pc_a, Pc_x, .999), 2);
             }
 
             function updateSwitchNetworkLatency() {
               var Ps_a = document.getElementById("psalpha").innerHTML;
               var Ps_x = document.getElementById("psxmin").innerHTML;
-              document.getElementById("pslatency50pct").innerHTML = roundNumber(calculate_pareto_percentile(Ps_a, Ps_x, .5), 2);
-              document.getElementById("pslatency999pct").innerHTML = roundNumber(calculate_pareto_percentile(Ps_a, Ps_x, .999), 2);
+              document.getElementById("pslatency50pct").innerHTML = roundNumber(calculateParetoPercentile(Ps_a, Ps_x, .5), 2);
+              document.getElementById("pslatency999pct").innerHTML = roundNumber(calculateParetoPercentile(Ps_a, Ps_x, .999), 2);
             }
 
             // Class to give us some semblance of separation of concerns
@@ -410,7 +410,7 @@
               this.Ps_x = parseFloat(document.getElementById("psxmin").innerHTML);
 
               function computeSamples(replication_scheme) {
-                var samples = replication_scheme(this.num_core_switches_to_update,
+                var samples = replication_scheme(this.numCoreSwitchesToUpdate,
                                                  this.N, this.W_a, this.R_a, this.Pc_a, this.Ps_a,
                                                  this.W_x, this.R_x, this.Pc_x, this.Ps_x);
                 if (this.consistent_updates) {
@@ -428,7 +428,7 @@
                  *   (from replication.js)
                  * - data is a set of samples
                  */
-                var commit_samples = replication_scheme(this.num_edge_switches_to_update,
+                var commit_samples = replication_scheme(this.num_edge_switchesToUpdate,
                                                          this.N, this.W_a, this.R_a, this.Pc_a, this.Ps_a,
                                                          this.W_x, this.R_x, this.Pc_x, this.Ps_x, true);
                 if (samples.length == 0) {
@@ -454,11 +454,11 @@
               this.initData = function() {
                 // N.B. we don't apply atomic commit for traditional routing
                 var no_ctrl = no_controller(this.src_to_remove, this.dest_to_remove,
-                                            this.after_matrix, this.core_switches_to_update,
+                                            this.after_matrix, this.core_switchesToUpdate,
                                             this.N, this.W_a, this.R_a, this.Pc_a, this.Ps_a,
                                             this.W_x, this.R_x, this.Pc_x, this.Ps_x);
                 this.traditional_times = no_ctrl
-                this.traditional_cdf = compute_cdf(no_ctrl);
+                this.traditional_cdf = computeCdf(no_ctrl);
                 this.single_samples = computeSamples(single_controller);
                 this.onepc_samples = computeSamples(one_phase_commit);
                 this.twopc_samples = computeSamples(two_phase_commit);
@@ -467,10 +467,10 @@
                 this.onepc_times = this.onepc_samples.map(function(v){return v[0]});
                 this.twopc_times = this.twopc_samples.map(function(v){return v[0]});
                 this.paxos_times = this.paxos_samples.map(function(v){return v[0]});
-                this.single_cdf = compute_cdf(self.single_times);
-                this.onepc_cdf = compute_cdf(this.onepc_times);
-                this.twopc_cdf = compute_cdf(this.twopc_times);
-                this.paxos_cdf = compute_cdf(this.paxos_times);
+                this.single_cdf = computeCdf(self.single_times);
+                this.onepc_cdf = computeCdf(this.onepc_times);
+                this.twopc_cdf = computeCdf(this.twopc_times);
+                this.paxos_cdf = computeCdf(this.paxos_times);
               }
 
               /*
@@ -496,22 +496,22 @@
                 }
                 this.src_to_remove = src_to_remove;
                 this.dest_to_remove = dest_to_remove;
-                this.before_matrix = converged_link_matrix(this.d3switches, before_links);
-                this.after_matrix = converged_link_matrix(this.d3switches, after_links);
+                this.before_matrix = convergedLinkMatrix(this.d3switches, before_links);
+                this.after_matrix = convergedLinkMatrix(this.d3switches, after_links);
 
-                this.core_switches_to_update = switches_to_update(this.before_matrix, this.after_matrix);
-                this.num_core_switches_to_update = this.core_switches_to_update.length;
+                this.core_switchesToUpdate = switchesToUpdate(this.before_matrix, this.after_matrix);
+                this.numCoreSwitchesToUpdate = this.core_switchesToUpdate.length;
                 // Don't update the ``ingress'' switch until the atomic commit
                 // point
                 if (this.consistent_updates) {
-                  if (this.num_core_switches_to_update != 0) {
-                    this.num_edge_switches_to_update = 1;
-                    this.num_core_switches_to_update -= 1;
+                  if (this.numCoreSwitchesToUpdate != 0) {
+                    this.num_edge_switchesToUpdate = 1;
+                    this.numCoreSwitchesToUpdate -= 1;
                   } else {
                     // Already converged (although controllers do run
                     // replication scheme to decide this, the network itself
                     // is already converged)
-                    this.num_edge_switches_to_update = 0;
+                    this.num_edge_switchesToUpdate = 0;
                   }
                 }
               }
@@ -595,25 +595,25 @@
 
             function updateResultsTable(data) {
               document.getElementById("traditional_latency50pct").innerHTML =
-                  roundNumber(calculate_percentile(data.traditional_times, .5), 2);
+                  roundNumber(calculatePercentile(data.traditional_times, .5), 2);
               document.getElementById("traditional_latency999pct").innerHTML =
-                  roundNumber(calculate_percentile(data.traditional_times, .999), 2);
+                  roundNumber(calculatePercentile(data.traditional_times, .999), 2);
               document.getElementById("single_latency50pct").innerHTML =
-                  roundNumber(calculate_percentile(data.single_times, .5), 2);
+                  roundNumber(calculatePercentile(data.single_times, .5), 2);
               document.getElementById("single_latency999pct").innerHTML =
-                  roundNumber(calculate_percentile(data.single_times, .999), 2);
+                  roundNumber(calculatePercentile(data.single_times, .999), 2);
               document.getElementById("onepc_latency50pct").innerHTML =
-                  roundNumber(calculate_percentile(data.onepc_times, .5), 2);
+                  roundNumber(calculatePercentile(data.onepc_times, .5), 2);
               document.getElementById("twopc_latency50pct").innerHTML =
-                  roundNumber(calculate_percentile(data.twopc_times, .5), 2);
+                  roundNumber(calculatePercentile(data.twopc_times, .5), 2);
               document.getElementById("paxos_latency50pct").innerHTML =
-                  roundNumber(calculate_percentile(data.paxos_times, .5), 2);
+                  roundNumber(calculatePercentile(data.paxos_times, .5), 2);
               document.getElementById("onepc_latency999pct").innerHTML =
-                  roundNumber(calculate_percentile(data.onepc_times, .999), 2);
+                  roundNumber(calculatePercentile(data.onepc_times, .999), 2);
               document.getElementById("twopc_latency999pct").innerHTML =
-                  roundNumber(calculate_percentile(data.twopc_times, .999), 2);
+                  roundNumber(calculatePercentile(data.twopc_times, .999), 2);
               document.getElementById("paxos_latency999pct").innerHTML =
-                  roundNumber(calculate_percentile(data.paxos_times, .999), 2);
+                  roundNumber(calculatePercentile(data.paxos_times, .999), 2);
 
               var print_all_the_data = document.getElementById("print_all_the_data_toggle").checked;
               if (print_all_the_data) {
@@ -632,31 +632,31 @@
               }
 
               var single_medians = [];
-              single_medians[0] = calculate_percentile(data.single_samples.map(function(v){return v[0]}), .5);
-              single_medians[1] = calculate_percentile(data.single_samples.map(function(v){return v[1]}), .5);
-              single_medians[2] = calculate_percentile(data.single_samples.map(function(v){return v[2]}), .5);
-              single_medians[3] = calculate_percentile(data.single_samples.map(function(v){return v[3]}), .5);
+              single_medians[0] = calculatePercentile(data.single_samples.map(function(v){return v[0]}), .5);
+              single_medians[1] = calculatePercentile(data.single_samples.map(function(v){return v[1]}), .5);
+              single_medians[2] = calculatePercentile(data.single_samples.map(function(v){return v[2]}), .5);
+              single_medians[3] = calculatePercentile(data.single_samples.map(function(v){return v[3]}), .5);
               console.log("Single: "+single_medians);
 
               var onepc_medians = [];
-              onepc_medians[0] = calculate_percentile(data.onepc_samples.map(function(v){return v[0]}), .5);
-              onepc_medians[1] = calculate_percentile(data.onepc_samples.map(function(v){return v[1]}), .5);
-              onepc_medians[2] = calculate_percentile(data.onepc_samples.map(function(v){return v[2]}), .5);
-              onepc_medians[3] = calculate_percentile(data.onepc_samples.map(function(v){return v[3]}), .5);
+              onepc_medians[0] = calculatePercentile(data.onepc_samples.map(function(v){return v[0]}), .5);
+              onepc_medians[1] = calculatePercentile(data.onepc_samples.map(function(v){return v[1]}), .5);
+              onepc_medians[2] = calculatePercentile(data.onepc_samples.map(function(v){return v[2]}), .5);
+              onepc_medians[3] = calculatePercentile(data.onepc_samples.map(function(v){return v[3]}), .5);
               console.log("1PC: "+onepc_medians);
 
               var twopc_medians = [];
-              twopc_medians[0] = calculate_percentile(data.twopc_samples.map(function(v){return v[0]}), .5);
-              twopc_medians[1] = calculate_percentile(data.twopc_samples.map(function(v){return v[1]}), .5);
-              twopc_medians[2] = calculate_percentile(data.twopc_samples.map(function(v){return v[2]}), .5);
-              twopc_medians[3] = calculate_percentile(data.twopc_samples.map(function(v){return v[3]}), .5);
+              twopc_medians[0] = calculatePercentile(data.twopc_samples.map(function(v){return v[0]}), .5);
+              twopc_medians[1] = calculatePercentile(data.twopc_samples.map(function(v){return v[1]}), .5);
+              twopc_medians[2] = calculatePercentile(data.twopc_samples.map(function(v){return v[2]}), .5);
+              twopc_medians[3] = calculatePercentile(data.twopc_samples.map(function(v){return v[3]}), .5);
               console.log("2PC: "+twopc_medians);
 
               var paxos_medians = [];
-              paxos_medians[0] = calculate_percentile(data.paxos_samples.map(function(v){return v[0]}), .5);
-              paxos_medians[1] = calculate_percentile(data.paxos_samples.map(function(v){return v[1]}), .5);
-              paxos_medians[2] = calculate_percentile(data.paxos_samples.map(function(v){return v[2]}), .5);
-              paxos_medians[3] = calculate_percentile(data.paxos_samples.map(function(v){return v[3]}), .5);
+              paxos_medians[0] = calculatePercentile(data.paxos_samples.map(function(v){return v[0]}), .5);
+              paxos_medians[1] = calculatePercentile(data.paxos_samples.map(function(v){return v[1]}), .5);
+              paxos_medians[2] = calculatePercentile(data.paxos_samples.map(function(v){return v[2]}), .5);
+              paxos_medians[3] = calculatePercentile(data.paxos_samples.map(function(v){return v[3]}), .5);
               console.log("Paxos: "+paxos_medians);
 
               console.log("\n");
@@ -675,14 +675,14 @@
 
             function editIterations(its) {
               document.getElementById("Islider").innerHTML = its;
-              update_max_iterations(its);
+              updateMaxIterations(its);
               updateConvergenceTime();
             }
 
             function drawParetoCDF(alpha, xmin, container) {
               var d1 = [];
               for (var i = 0; i < 32; i += 0.5) {
-                d1.push([i, calc_pareto_cdf(alpha, xmin, i)]);
+                d1.push([i, calcParetoCdf(alpha, xmin, i)]);
               }
               var f = Flotr.draw($(container), [d1], {
                 xaxis: {

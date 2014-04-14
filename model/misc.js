@@ -2,10 +2,14 @@
 // Copyright 2012-2013 Colin Scott
 // Copyright 2012-2013 Andrew Or
 
+/*
+ * Miscellaneous helper functions
+ */
+
 var ITERATIONS = 2500.0;
 var MAX_PS = 1 - 1 / ITERATIONS;
 
-function update_max_iterations(its) {
+function updateMaxIterations(its) {
   ITERATIONS = its;
   MAX_PS = 1 - 1 / ITERATIONS;
 }
@@ -20,33 +24,33 @@ function nextPareto(alpha, xmin) {
   return Math.pow(alpha * Math.pow(xmin, alpha) / (1 - Math.random()), 1 / (alpha + 1))
 }
 
-function calc_exponential_pdf(lmbda, t) {
+function calcExponentialPdf(lmbda, t) {
   return lmbda * Math.exp(-lmbda * t);
 }
 
-function calc_exponential_cdf(lmbda, t) {
+function calcExponentialCdf(lmbda, t) {
   return 1 - Math.exp(-lmbda * t);
 }
 
-function calc_exponential_expected(lmbda) {
+function calcExponentialExpected(lmbda) {
   return 1 / lmbda;
 }
 
-function calc_pareto_pdf(alpha, xmin, t) {
+function calcParetoPdf(alpha, xmin, t) {
   if( t < xmin ){
     return 0;
   }
   return alpha * Math.pow(xmin, alpha) / Math.pow(t, (alpha + 1));
 }
 
-function calc_pareto_cdf(alpha, xmin, t) {
+function calcParetoCdf(alpha, xmin, t) {
   if( t < xmin ){
     return 0;
   }
   return 1 - Math.pow(xmin / t, alpha);
 }
 
-function calc_pareto_expected(alpha, xmin) {
+function calcParetoExpected(alpha, xmin) {
   if( t <= 1 ){
     return Infinity;
   }
@@ -54,9 +58,9 @@ function calc_pareto_expected(alpha, xmin) {
 }
 
 /* Compute a list of CDF points based on a set of raw data points */
-function compute_cdf(datapoints) {
+function computeCdf(datapoints) {
   var cdf = new Array();
-  datapoints = sortfloats(datapoints);
+  datapoints = sortFloats(datapoints);
   var len = datapoints.length;
   var step = 1.0 / len;
   var cumulative = 0.0;
@@ -70,25 +74,25 @@ function compute_cdf(datapoints) {
 }
 
 /* Calculates a percentile value of any given distribution */
-function calculate_percentile(datapoints, pctile){
+function calculatePercentile(datapoints, pctile){
   if( datapoints.length==0 ){
     return 0;
   }
-  return sortfloats(datapoints)[Math.floor(datapoints.length * pctile)];
+  return sortFloats(datapoints)[Math.floor(datapoints.length * pctile)];
 }
 
 /* Calculates a percentile value of a given Pareto distribution */
-function calculate_pareto_percentile(alpha, xmin, pctile) {
+function calculateParetoPercentile(alpha, xmin, pctile) {
   var ITERATIONS = Math.max(10000.0, 1 / (1 - pctile));
   var i = 0;
   var latencies = [];
   for (i = 0; i < ITERATIONS; i++) {
     latencies.push(nextPareto(alpha, xmin))
   }
-  return calculate_percentile(latencies, pctile);
+  return calculatePercentile(latencies, pctile);
 }
 
-function sortfloats(l) {
+function sortFloats(l) {
   return l.sort(function(a, b) {
     return a - b;
   });

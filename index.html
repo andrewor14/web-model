@@ -8,10 +8,12 @@
     <script type="text/javascript" src="assets/js/jquery/ui/jquery.ui.mouse.min.js"></script>
     <script type="text/javascript" src="assets/js/jquery/ui/jquery.ui.slider.min.js"></script>
     <script type="text/javascript" src="assets/js/bootstrap/bootstrap.min.js"></script>
+    <script type="text/javascript" src="assets/js/underscore/underscore.min.js"></script>
     <script type="text/javascript" src="assets/js/flotr/lib/prototype-1.6.0.2.js"></script>
     <script type="text/javascript" src="assets/js/flotr/lib/canvas2image.js"></script>
     <script type="text/javascript" src="assets/js/flotr/lib/canvastext.js"></script>
     <script type="text/javascript" src="assets/js/flotr/flotr-0.2.0-alpha.js"></script>
+    <script type="text/javascript" src="model/topology.js"></script>
     <script type="text/javascript" src="model/floyd-warshall.js"></script>
     <script type="text/javascript" src="model/misc.js"></script>
     <script type="text/javascript" src="model/replication.js"></script>
@@ -105,14 +107,14 @@
                     <div id="rcontainer" class="pareto-cdf"></div>
                     <div class="small-axis-label">Latency (ms)</div>
                   </div>
-                  <div class="slider-container">
+                  <div class="left-slider-container">
                     <span class="slider-alpha-label">𝛼</span>
-                    <div id="ralpha-slider" class="slider"></div>
+                    <div id="ralpha-slider" class="left-slider"></div>
                     <span id="ralpha-value" class="slider-value-label"></span>
                   </div>
-                  <div class="slider-container">
+                  <div class="left-slider-container">
                     <span class="slider-xmin-label">x<sub>min</sub> </span>
-                    <div id="rxmin-slider" class="slider"></div>
+                    <div id="rxmin-slider" class="left-slider"></div>
                     <span id="rxmin-value" class="slider-value-label"></span>
                   </div>
                   <div class="parameter-percentiles">
@@ -126,14 +128,14 @@
                     <div id="wcontainer" class="pareto-cdf"></div>
                     <div class="small-axis-label">Latency (ms)</div>
                   </div>
-                  <div class="slider-container">
+                  <div class="left-slider-container">
                     <span class="slider-alpha-label">𝛼</span>
-                    <div id="walpha-slider" class="slider"></div>
+                    <div id="walpha-slider" class="left-slider"></div>
                     <span id="walpha-value" class="slider-value-label"></span>
                   </div>
-                  <div class="slider-container">
+                  <div class="left-slider-container">
                     <span class="slider-xmin-label">x<sub>min</sub> </span>
-                    <div id="wxmin-slider" class="slider"></div>
+                    <div id="wxmin-slider" class="left-slider"></div>
                     <span id="wxmin-value" class="slider-value-label"></span>
                   </div>
                   <div class="parameter-percentiles">
@@ -149,14 +151,14 @@
                     <div id="pscontainer" class="pareto-cdf"></div>
                     <div class="small-axis-label">Latency (ms)</div>
                   </div>
-                  <div class="slider-container">
+                  <div class="left-slider-container">
                     <span class="slider-alpha-label">𝛼</span>
-                    <div id="psalpha-slider" class="slider"></div>
+                    <div id="psalpha-slider" class="left-slider"></div>
                     <span id="psalpha-value" class="slider-value-label"></span>
                   </div>
-                  <div class="slider-container">
+                  <div class="left-slider-container">
                     <span class="slider-xmin-label">x<sub>min</sub> </span>
-                    <div id="psxmin-slider" class="slider"></div>
+                    <div id="psxmin-slider" class="left-slider"></div>
                     <span id="psxmin-value" class="slider-value-label"></span>
                   </div>
                   <div class="parameter-percentiles">
@@ -170,14 +172,14 @@
                     <div id="pccontainer" class="pareto-cdf"></div>
                     <div class="small-axis-label">Latency (ms)</div>
                   </div>
-                  <div class="slider-container">
+                  <div class="left-slider-container">
                     <span class="slider-alpha-label">𝛼</span>
-                    <div id="pcalpha-slider" class="slider"></div>
+                    <div id="pcalpha-slider" class="left-slider"></div>
                     <span id="pcalpha-value" class="slider-value-label"></span>
                   </div>
-                  <div class="slider-container">
+                  <div class="left-slider-container">
                     <span class="slider-xmin-label">x<sub>min</sub> </span>
-                    <div id="pcxmin-slider" class="slider"></div>
+                    <div id="pcxmin-slider" class="left-slider"></div>
                     <span id="pcxmin-value" class="slider-value-label"></span>
                   </div>
                   <div class="parameter-percentiles">
@@ -188,12 +190,15 @@
               </div>
             </div>
             <div class="col-md-4">
-              <div id="iterations-slider-container">
-                <div>
-                  <span class="bold">Accuracy: </span>
-                  <span id="iterations-value">0</span> points
-                </div>
-                <div id="iterations-slider" class="slider"></div>
+              <div class="right-slider-container">
+                <span class="bold">Number of controllers: </span>
+                <span id="num-controllers-value">3</span>
+                <div id="num-controllers-slider" class="right-slider"></div>
+              </div>
+              <div class="right-slider-container">
+                <span class="bold">Accuracy: </span>
+                <span id="iterations-value">0</span> points
+                <div id="iterations-slider" class="right-slider"></div>
               </div>
               <table id="convergence-percentiles" class="table">
                 <tr>

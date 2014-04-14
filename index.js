@@ -8,9 +8,15 @@ document.observe('dom:loaded', function () {
   initialize()
 });
 
+
+/*
+ * Global variables.
+ */
+
 var initialized = false;
 
 var parameterValues = {
+  numControllers: 3,
   iterations: 1000,
   ralpha: 3.8,
   rxmin: 1.55,
@@ -21,6 +27,11 @@ var parameterValues = {
   pcalpha: 2.5,
   pcxmin: 0.5
 }
+
+
+/*
+ * Initialize all HTML elements.
+ */
 
 function initialize() {
   initializeSliders();
@@ -40,8 +51,16 @@ function initialize() {
 }
 
 function initializeSliders() {
-  jQuery("#iterations-slider").slider({
+  jQuery("#num-controllers-slider").slider({
     min: 1,
+    max: 10,
+    value: parameterValues.numControllers,
+    change: function (event, ui) {
+      editNumControllers(ui.value)
+    }
+  })
+  jQuery("#iterations-slider").slider({
+    min: 10,
     max: 2500,
     value: parameterValues.iterations,
     change: function (event, ui) {
@@ -115,230 +134,173 @@ function initializeSliders() {
 }
 
 
-// Class to give us some semblance of separation of concerns
-function DataContainer(N, d3switches, d3links) {
-  this.N = N;
-  this.d3switches = d3switches;
-  this.d3links = d3links;
-  this.iterations = parameterValues.iterations
-  this.R_a = parameterValues.ralpha
-  this.R_x = parameterValues.rxmin
-  this.W_a = parameterValues.walpha
-  this.W_x = parameterValues.wxmin
-  this.Ps_a = parameterValues.psalpha
-  this.Pc_a = parameterValues.pcalpha
-  this.Ps_x = parameterValues.psxmin
-  this.Pc_x = parameterValues.pcxmin
+/*
+ * Generate convergence time data points.
+ */
 
-  function computeSamples(replication_scheme) {
-    return replication_scheme(this.num_core_switches_to_update, this.N, this.W_a,
-      this.R_a, this.Pc_a, this.Ps_a, this.W_x, this.R_x, this.Pc_x, this.Ps_x, this.iterations);
+function DataContainer(switches, links) {
+  this.numControllers = parameterValues.numControllers;
+  this.switches = switches;
+  this.links = links;
+  this.iterations = parameterValues.iterations
+  this.ralpha = parameterValues.ralpha
+  this.rxmin = parameterValues.rxmin
+  this.walpha = parameterValues.walpha
+  this.wxmin = parameterValues.wxmin
+  this.psalpha = parameterValues.psalpha
+  this.pcalpha = parameterValues.pcalpha
+  this.psxmin = parameterValues.psxmin
+  this.pcxmin = parameterValues.pcxmin
+
+  function computeSamples(replicationScheme) {
+    return replicationScheme(this.numCoreSwitchesToUpdate, this.numControllers, this.walpha,
+      this.ralpha, this.pcalpha, this.psalpha, this.wxmin, this.rxmin, this.pcxmin, this.psxmin,
+      this.iterations);
   }
 
   this.compute = function() {
-    // N.B. we don't apply atomic commit for traditional routing
-    var no_ctrl = no_controller(this.src_to_remove, this.dest_to_remove, this.after_matrix,
-      this.core_switches_to_update, this.W_a, this.R_a, this.Pc_a, this.Ps_a, this.W_x,
-      this.R_x, this.Pc_x, this.Ps_x, this.iterations);
-    this.traditional_times = no_ctrl
-    this.traditional_cdf = compute_cdf(no_ctrl);
-    this.single_samples = computeSamples(single_controller);
-    this.onepc_samples = computeSamples(one_phase_commit);
-    this.twopc_samples = computeSamples(two_phase_commit);
-    this.paxos_samples = computeSamples(paxos_commit);
-    this.single_times = this.single_samples.map(function(v){return v[0]});
-    this.onepc_times = this.onepc_samples.map(function(v){return v[0]});
-    this.twopc_times = this.twopc_samples.map(function(v){return v[0]});
-    this.paxos_times = this.paxos_samples.map(function(v){return v[0]});
-    this.single_cdf = compute_cdf(self.single_times);
-    this.onepc_cdf = compute_cdf(this.onepc_times);
-    this.twopc_cdf = compute_cdf(this.twopc_times);
-    this.paxos_cdf = compute_cdf(this.paxos_times);
+    var noCtrl = noController(this.srcToRemove, this.destToRemove, this.afterMatrix,
+      this.coreSwitchesToUpdate, this.walpha, this.ralpha, this.pcalpha, this.psalpha, this.wxmin,
+      this.rxmin, this.pcxmin, this.psxmin, this.iterations);
+    this.traditionalTimes = noCtrl
+    this.traditionalCdf = computeCdf(noCtrl);
+    this.singleSamples = computeSamples(singleController);
+    this.onepcSamples = computeSamples(onePhaseCommit);
+    this.twopcSamples = computeSamples(twoPhaseCommit);
+    this.paxosSamples = computeSamples(paxosCommit);
+    this.singleTimes = this.singleSamples.map(function(v){ return v[0] });
+    this.onepcTimes = this.onepcSamples.map(function(v){ return v[0] });
+    this.twopcTimes = this.twopcSamples.map(function(v){ return v[0] });
+    this.paxosTimes = this.paxosSamples.map(function(v){ return v[0] });
+    this.singleCdf = computeCdf(this.singleTimes);
+    this.onepcCdf = computeCdf(this.onepcTimes);
+    this.twopcCdf = computeCdf(this.twopcTimes);
+    this.paxosCdf = computeCdf(this.paxosTimes);
   }
 
   /*
-   * Remove a link to cause a link down event. This is the event that induces a re-convergence
-   * of routing state in the network.
+   * Remove a link to cause a link down event.
+   * This is the event that induces a re-convergence of routing state in the network.
    */
-  this.remove_link = function() {
-    if (this.d3links.length == 0) return;
-
-    /* Construct before and after network configurations */
-    var before_links = this.d3links;
-    var after_links = this.d3links.slice(0);
-    var link_to_remove = this.d3links[Math.floor(Math.random()*this.d3links.length)];
-    var src_to_remove = link_to_remove.source.id;
-    var dest_to_remove = link_to_remove.target.id;
-    for (var i=this.d3links.length-1; i>=0; i--) {
-      var link = after_links[i];
-      if ((link.source.id == src_to_remove && link.target.id == dest_to_remove) ||
-          (link.source.id == dest_to_remove && link.target.id == src_to_remove)) {
-        after_links.splice(i, 1);
+  this.removeLink = function() {
+    if (this.links.length == 0) return;
+    // Construct before and after network configurations
+    var beforeLinks = this.links;
+    var afterLinks = this.links.slice(0);
+    var linkToRemove = this.links[Math.floor(Math.random() * this.links.length)];
+    var srcToRemove = linkToRemove.src;
+    var destToRemove = linkToRemove.dest;
+    for (var i = this.links.length - 1; i >= 0; i--) {
+      var link = afterLinks[i];
+      if ((link.src == srcToRemove && link.dest == destToRemove) ||
+          (link.src == destToRemove && link.dest == srcToRemove)) {
+        afterLinks.splice(i, 1);
       }
     }
-    this.src_to_remove = src_to_remove;
-    this.dest_to_remove = dest_to_remove;
-    this.before_matrix = converged_link_matrix(this.d3switches, before_links);
-    this.after_matrix = converged_link_matrix(this.d3switches, after_links);
-
-    this.core_switches_to_update = switches_to_update(this.before_matrix, this.after_matrix);
-    this.num_core_switches_to_update = this.core_switches_to_update.length;
-    // Don't update the ``ingress'' switch until the atomic commit
-    // point
-    if (this.consistent_updates) {
-      if (this.num_core_switches_to_update != 0) {
-        this.num_edge_switches_to_update = 1;
-        this.num_core_switches_to_update -= 1;
+    this.srcToRemove = srcToRemove;
+    this.destToRemove = destToRemove;
+    this.beforeMatrix = convergedLinkMatrix(this.switches, beforeLinks);
+    this.afterMatrix = convergedLinkMatrix(this.switches, afterLinks);
+    this.coreSwitchesToUpdate = switchesToUpdate(this.beforeMatrix, this.afterMatrix);
+    this.numCoreSwitchesToUpdate = this.coreSwitchesToUpdate.length;
+    // Don't update the ingress switch until the atomic commit point
+    if (this.consistentUpdates) {
+      if (this.numCoreSwitchesToUpdate != 0) {
+        this.numEdgeSwitchesToUpdate = 1;
+        this.numCoreSwitchesToUpdate -= 1;
       } else {
-        // Already converged (although controllers do run
-        // replication scheme to decide this, the network itself
-        // is already converged)
-        this.num_edge_switches_to_update = 0;
+        // Already converged (although controllers do run replication scheme to decide this,
+        // the network itself is already converged)
+        this.numEdgeSwitchesToUpdate = 0;
       }
     }
   }
 
-  this.remove_link();
+  this.removeLink();
   this.compute();
-
   return this;
 }
 
+
+/*
+ * Reflect updated statistics in HTML.
+ */
+
 function updateConvergenceTime() {
-  var N = 3;
-  var numSwitches = 4
-  var d3switches = new Array(numSwitches)
-  var d3links = []
+  /* For now, use a 4-node mesh network */
+  var numSwitches = 4;
+  var switches = new Array(numSwitches);
+  var links = [];
   for (var i = 1; i <= numSwitches; i++) {
     for (var j = 1; j <= numSwitches; j++) {
       if (i != j) {
-        var link = {
-          source: { id: i },
-          target: { id: j }
-        }
-        d3links.push(link)
+        var link = new DirectedLink(i, j)
+        links.push(link)
       }
     }
   }
-  var data = DataContainer(N, d3switches, d3links);
-  updateConvergencePercentiles(data)
-
-  Flotr.draw(
-    $('tcdf'), [{
-      data: data.traditional_cdf,
-      label: 'Fully Distributed',
-      color: 'blue'
-    }, {
-      data: data.single_cdf,
-      label: 'Single Controller',
-      color: 'red'
-    }, {
-      data: data.onepc_cdf,
-      label: 'Master/Backup(s) with One-Phase Commit',
-      color: '#c4e5c1'
-    }, {
-      data: data.twopc_cdf,
-      label: 'Master/Backup(s) with Two-Phase Commit',
-      color: '#e988a1'
-    }, {
-      data: data.paxos_cdf,
-      label: 'Paxos Replicated State Machines',
-      color: '#6dc066'
-    }], {
-      legend: {
-        position: 'se',
-        margin: 30
-      },
-      yaxis: {
-        autoscaleMargin: 0
-      },
-      mouse: {
-        track: true,
-        sensibility: 1,
-        trackDecimals: 3,
-        trackFormatter: function (obj) {
-          return 't = ' + roundNumber(obj.x, 2) + ', Pr = ' + obj.y;
-        }
-      },
-  });
-
-  // Post-processing style
-  jQuery(".flotr-legend table").css({
-    "height": "100px",
-    "width": "340px"
-  });
-  jQuery(".flotr-legend-color-box div").css({
-    "border": "0px",
-    "padding": "0px",
-    "margin-left": "5px"
-  });
-  jQuery(".flotr-legend-label").css({
-    "font-size": "16px",
-    "color": "#444"
-  });
+  var data = DataContainer(switches, links);
+  updateConvergencePercentiles(data);
+  drawConvergenceCdf(data);
 }
-
-/*
- * Reflect updated percentiles in HTML.
- */
 
 function updateConvergencePercentiles(data) {
   document.getElementById("traditional_latency50pct").innerHTML =
-    roundNumber(calculate_percentile(data.traditional_times, .5), 2);
+    roundNumber(calculatePercentile(data.traditionalTimes, 0.5), 2);
   document.getElementById("traditional_latency999pct").innerHTML =
-    roundNumber(calculate_percentile(data.traditional_times, .999), 2);
+    roundNumber(calculatePercentile(data.traditionalTimes, 0.999), 2);
   document.getElementById("single_latency50pct").innerHTML =
-    roundNumber(calculate_percentile(data.single_times, .5), 2);
+    roundNumber(calculatePercentile(data.singleTimes, 0.5), 2);
   document.getElementById("single_latency999pct").innerHTML =
-    roundNumber(calculate_percentile(data.single_times, .999), 2);
+    roundNumber(calculatePercentile(data.singleTimes, 0.999), 2);
   document.getElementById("onepc_latency50pct").innerHTML =
-    roundNumber(calculate_percentile(data.onepc_times, .5), 2);
+    roundNumber(calculatePercentile(data.onepcTimes, 0.5), 2);
   document.getElementById("twopc_latency50pct").innerHTML =
-    roundNumber(calculate_percentile(data.twopc_times, .5), 2);
+    roundNumber(calculatePercentile(data.twopcTimes, 0.5), 2);
   document.getElementById("paxos_latency50pct").innerHTML =
-    roundNumber(calculate_percentile(data.paxos_times, .5), 2);
+    roundNumber(calculatePercentile(data.paxosTimes, 0.5), 2);
   document.getElementById("onepc_latency999pct").innerHTML =
-    roundNumber(calculate_percentile(data.onepc_times, .999), 2);
+    roundNumber(calculatePercentile(data.onepcTimes, 0.999), 2);
   document.getElementById("twopc_latency999pct").innerHTML =
-    roundNumber(calculate_percentile(data.twopc_times, .999), 2);
+    roundNumber(calculatePercentile(data.twopcTimes, 0.999), 2);
   document.getElementById("paxos_latency999pct").innerHTML =
-    roundNumber(calculate_percentile(data.paxos_times, .999), 2);
+    roundNumber(calculatePercentile(data.paxosTimes, 0.999), 2);
 }
 
 function updateReadLatencyPercentiles() {
   var alpha = parameterValues.ralpha
   var xmin = parameterValues.rxmin
   document.getElementById("rlatency50pct").innerHTML =
-    roundNumber(calculate_pareto_percentile(alpha, xmin, .5), 2);
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2);
   document.getElementById("rlatency999pct").innerHTML =
-    roundNumber(calculate_pareto_percentile(alpha, xmin, .999), 2);
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2);
 }
 
 function updateWriteLatencyPercentiles() {
   var alpha = parameterValues.walpha
   var xmin = parameterValues.wxmin
   document.getElementById("wlatency50pct").innerHTML =
-    roundNumber(calculate_pareto_percentile(alpha, xmin, .5), 2);
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2);
   document.getElementById("wlatency999pct").innerHTML =
-    roundNumber(calculate_pareto_percentile(alpha, xmin, .999), 2);
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2);
 }
 
 function updateSwitchNetworkLatencyPercentiles() {
   var alpha = parameterValues.psalpha
   var xmin = parameterValues.psxmin
   document.getElementById("pslatency50pct").innerHTML =
-    roundNumber(calculate_pareto_percentile(alpha, xmin, .5), 2);
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2);
   document.getElementById("pslatency999pct").innerHTML =
-    roundNumber(calculate_pareto_percentile(alpha, xmin, .999), 2);
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2);
 }
 
 function updateControllerNetworkLatencyPercentiles() {
   var alpha = parameterValues.pcalpha
   var xmin = parameterValues.pcxmin
   document.getElementById("pclatency50pct").innerHTML =
-    roundNumber(calculate_pareto_percentile(alpha, xmin, .5), 2);
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2);
   document.getElementById("pclatency999pct").innerHTML =
-    roundNumber(calculate_pareto_percentile(alpha, xmin, .999), 2);
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2);
 }
 
 function updateAllParameterPercentiles() {
@@ -352,6 +314,14 @@ function updateAllParameterPercentiles() {
 /*
  * Edit values of model parameters.
  */
+
+function editNumControllers(numControllers) {
+  document.getElementById("num-controllers-value").innerHTML = numControllers;
+  parameterValues.numControllers = numControllers;
+  if (initialized) {
+    updateConvergenceTime();
+  }
+}
 
 function editIterations(iterations) {
   document.getElementById("iterations-value").innerHTML = iterations;
@@ -443,15 +413,15 @@ function editPcXmin(xmin) {
 
 
 /*
- * Draw the CDFs of model parameters as Pareto distributions.
+ * Draw each CDF using Flotr.
  */
 
 function drawParetoCDF(alpha, xmin, container) {
   var data = [];
   for (var i = 0; i < 32; i += 0.5) {
-    data.push([i, calc_pareto_cdf(alpha, xmin, i)]);
+    data.push([i, calcParetoCdf(alpha, xmin, i)]);
   }
-  var f = Flotr.draw($(container), [data], {
+  Flotr.draw($(container), [data], {
     xaxis: { tickDecimals: 0 }
   });
 }
@@ -479,3 +449,61 @@ function drawAllParameterCDFs() {
   drawControllerNetworkLatencyCDF();
 }
 
+function drawConvergenceCdf(data) {
+  Flotr.draw(
+    $('tcdf'), [{
+      data: data.traditionalCdf,
+      label: 'Fully Distributed',
+      color: 'blue'
+    }, {
+      data: data.singleCdf,
+      label: 'Single Controller',
+      color: 'red'
+    }, {
+      data: data.onepcCdf,
+      label: 'Master/Backup(s) with One-Phase Commit',
+      color: '#c4e5c1'
+    }, {
+      data: data.twopcCdf,
+      label: 'Master/Backup(s) with Two-Phase Commit',
+      color: '#e988a1'
+    }, {
+      data: data.paxosCdf,
+      label: 'Paxos Replicated State Machines',
+      color: '#6dc066'
+    }], {
+      legend: {
+        position: 'se',
+        margin: 30
+      },
+      xaxis: {
+        max: 30,
+      },
+      yaxis: {
+        autoscaleMargin: 0
+      },
+      mouse: {
+        track: true,
+        sensibility: 1,
+        trackDecimals: 3,
+        trackFormatter: function (obj) {
+          return 't = ' + roundNumber(obj.x, 2) + ', Pr = ' + obj.y;
+        }
+      },
+  });
+
+  // Post-processing style
+  jQuery(".flotr-legend table").css({
+    "height": "100px",
+    "width": "340px"
+  });
+  jQuery(".flotr-legend-color-box div").css({
+    "border": "0px",
+    "padding": "0px",
+    "margin-left": "5px"
+  });
+  jQuery(".flotr-legend-label").css({
+    "font-size": "16px",
+    "color": "#444"
+  });
+}

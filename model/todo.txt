@@ -1,0 +1,9 @@
+This is an incomplete list of things to do to improve this model:
+
+1. Allow custom topologies
+2. Use more realistic values for latencies
+3. Account for asynchronous controller updates
+4. Account for in-band (for WAN) vs out-of-band
+5. Model switch-to-controller and switch-to-switch latencies separately
+6. Allow turning off certain parameters altogether (set the value to 0)
+7. Account for other policies (ACL) and more complicated failure conditions
