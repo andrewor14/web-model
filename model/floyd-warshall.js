@@ -8,12 +8,12 @@
  * Finite link costs are only assigned to directly connected nodes. All other elements of the
  * matrix are assigned infinite cost. Each entry of the matrix is a (distance, last hop node) pair.
  */
-function linkMatrix(switches, links) {
+function linkMatrix(numSwitches, links) {
   var matrix = [];
   // Create an empty matrix of size n^2, where n = the number of switches
-  for (var i = 0; i < switches.length; i++) {
+  for (var i = 0; i < numSwitches; i++) {
     var row = [];
-    for (var j = 0; j < switches.length; j++) {
+    for (var j = 0; j < numSwitches; j++) {
       row.push([Number.POSITIVE_INFINITY, -1]);
     }
     row[i][0] = 0;
@@ -23,8 +23,8 @@ function linkMatrix(switches, links) {
   // Connect the switches
   for (var k = 0; k < links.length; k++) {
     var link = links[k];
-    var src = link.src - 1;     // Switches are not 0 indexed
-    var dest = link.dest - 1;
+    var src = link.src;
+    var dest = link.dest;
     matrix[src][dest][0] = 100; // Arbitrary; change to actual distance
     matrix[src][dest][1] = src;
   }
@@ -34,8 +34,8 @@ function linkMatrix(switches, links) {
 /*
  * Return a link matrix for the corresponding topology and run the Floyd-Warshall algorithm.
  */
-function convergedLinkMatrix(switches, links) {
-  var matrix = linkMatrix(switches, links);
+function convergedLinkMatrix(numSwitches, links) {
+  var matrix = linkMatrix(numSwitches, links);
   floydWarshall(matrix);
   return matrix;
 }
@@ -120,12 +120,14 @@ function dags(matrix) {
 
 /*
  * Return the list of directed links on the path from the given src to the given dest.
+ * This traces the back pointers recorded in the link matrix from the destination to the source.
  */
 function linksOnPath(src, dest, matrix) {
   var links = [];
   var to = dest;
   var from = matrix[src][to][1];
-  while (from != to) {
+  // from == to iff we have reached the src
+  while (from != to && from != -1) {
     link = new DirectedLink(from, to);
     links.splice(0, 0, link); // links.insert(0)
     to = from;

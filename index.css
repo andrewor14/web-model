@@ -149,7 +149,7 @@ h1, h3 {
   margin: 6px 0 0 10px;
 }
 
-.left-slider-container {
+.left-params-container {
   clear: left;
   margin-left: 25px;
 }
@@ -167,7 +167,7 @@ h1, h3 {
   padding-top: 5px;
 }
 
-.right-slider-container {
+.right-params-container {
   margin-top: 20px;
 }
 

@@ -30,8 +30,8 @@ function noController(srcToRemove, destToRemove, afterMatrix, switchesToUpdate,
    * Requires ./floyd-warshall.js
    */
 
-  var src = srcToRemove - 1;
-  var dest = destToRemove - 1;
+  var src = srcToRemove;
+  var dest = destToRemove;
 
   var datapoints = [];
   for (var i = 0; i < iterations; i++) {

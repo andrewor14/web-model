@@ -16,7 +16,7 @@ function updateMaxIterations(its) {
 
 /* Draw a random sample from the given Exponential distribution */
 function nextExponential(lmbda) {
-  return Math.log((1 - Math.random())/lmbda) / (-lmbda);
+  return Math.log((1 - Math.random()) / lmbda) / (-lmbda);
 }
 
 /* Draw a random sample from the given Pareto distribution */
@@ -37,21 +37,21 @@ function calcExponentialExpected(lmbda) {
 }
 
 function calcParetoPdf(alpha, xmin, t) {
-  if( t < xmin ){
+  if (t < xmin){
     return 0;
   }
   return alpha * Math.pow(xmin, alpha) / Math.pow(t, (alpha + 1));
 }
 
 function calcParetoCdf(alpha, xmin, t) {
-  if( t < xmin ){
+  if (t < xmin){
     return 0;
   }
   return 1 - Math.pow(xmin / t, alpha);
 }
 
 function calcParetoExpected(alpha, xmin) {
-  if( t <= 1 ){
+  if (t <= 1){
     return Infinity;
   }
   return alpha * xmin / (alpha - 1)
@@ -68,14 +68,14 @@ function computeCdf(datapoints) {
     var x = datapoints[i];
     cumulative += step;
     var y = cumulative;
-    cdf.push([x,y]);
+    cdf.push([x, y]);
   }
   return cdf;
 }
 
 /* Calculates a percentile value of any given distribution */
-function calculatePercentile(datapoints, pctile){
-  if( datapoints.length==0 ){
+function calculatePercentile(datapoints, pctile) {
+  if (datapoints.length == 0) {
     return 0;
   }
   return sortFloats(datapoints)[Math.floor(datapoints.length * pctile)];

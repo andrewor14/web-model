@@ -26,7 +26,15 @@ var parameterValues = {
   psxmin: 0.5,
   pcalpha: 2.5,
   pcxmin: 0.5
-}
+};
+
+var defaultTopologies = {
+  "8-switch mesh": new MeshTopology(8),
+  "8-switch ring": new RingTopology(8),
+  "8-switch star": new StarTopology(8)
+};
+
+var currentTopology = Object.keys(defaultTopologies)[0];
 
 
 /*
@@ -35,6 +43,7 @@ var parameterValues = {
 
 function initialize() {
   initializeSliders();
+  initializeTopologyDropdown();
   editIterations(parameterValues.iterations);
   editRAlpha(parameterValues.ralpha);
   editRXmin(parameterValues.rxmin);
@@ -133,14 +142,27 @@ function initializeSliders() {
   });
 }
 
+function initializeTopologyDropdown() {
+  jQuery.each(defaultTopologies, function(name, topology) {
+    jQuery("<option></option>")
+      .appendTo("#topology-dropdown")
+      .attr("value", name)
+      .text(name);
+  });
+  jQuery("#topology-dropdown").change(function() {
+    currentTopology = jQuery(this).val();
+    updateConvergenceTime();
+  });
+}
+
 
 /*
  * Generate convergence time data points.
  */
 
-function DataContainer(switches, links) {
+function DataContainer(numSwitches, links) {
   this.numControllers = parameterValues.numControllers;
-  this.switches = switches;
+  this.numSwitches = numSwitches;
   this.links = links;
   this.iterations = parameterValues.iterations
   this.ralpha = parameterValues.ralpha
@@ -199,8 +221,8 @@ function DataContainer(switches, links) {
     }
     this.srcToRemove = srcToRemove;
     this.destToRemove = destToRemove;
-    this.beforeMatrix = convergedLinkMatrix(this.switches, beforeLinks);
-    this.afterMatrix = convergedLinkMatrix(this.switches, afterLinks);
+    this.beforeMatrix = convergedLinkMatrix(this.numSwitches, beforeLinks);
+    this.afterMatrix = convergedLinkMatrix(this.numSwitches, afterLinks);
     this.coreSwitchesToUpdate = switchesToUpdate(this.beforeMatrix, this.afterMatrix);
     this.numCoreSwitchesToUpdate = this.coreSwitchesToUpdate.length;
     // Don't update the ingress switch until the atomic commit point
@@ -227,19 +249,8 @@ function DataContainer(switches, links) {
  */
 
 function updateConvergenceTime() {
-  /* For now, use a 4-node mesh network */
-  var numSwitches = 4;
-  var switches = new Array(numSwitches);
-  var links = [];
-  for (var i = 1; i <= numSwitches; i++) {
-    for (var j = 1; j <= numSwitches; j++) {
-      if (i != j) {
-        var link = new DirectedLink(i, j)
-        links.push(link)
-      }
-    }
-  }
-  var data = DataContainer(switches, links);
+  var topology = defaultTopologies[currentTopology];
+  var data = DataContainer(topology.numSwitches, topology.links);
   updateConvergencePercentiles(data);
   drawConvergenceCdf(data);
 }
