@@ -29,9 +29,10 @@ var parameterValues = {
 };
 
 var defaultTopologies = {
-  "8-switch mesh": new MeshTopology(8),
-  "8-switch ring": new RingTopology(8),
-  "8-switch star": new StarTopology(8)
+  "20-switch mesh": new MeshTopology(20),
+  "20-switch ring": new RingTopology(20),
+  "20-switch star": new StarTopology(20),
+  "4-pod fat-tree": new FatTreeTopology(4),
 };
 
 var currentTopology = Object.keys(defaultTopologies)[0];

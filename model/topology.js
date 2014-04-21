@@ -65,10 +65,69 @@ function StarTopology(numSwitches) {
 }
 
 /*
- * Representation of a fat tree topology.
+ * Representation of a fat-tree topology.
+ *
+ * This is based on the fat-tree described in the following publication:
+ *
+ * Al-Fares, Mohammad, Alexander Loukissas, and Amin Vahdat.
+ * "A scalable, commodity data center network architecture."
+ * ACM SIGCOMM Computer Communication Review. Vol. 38. No. 4. ACM, 2008.
+ * (http://cseweb.ucsd.edu/~vahdat/papers/sigcomm08.pdf)
  */
-function FatTreeTopology() {
+function FatTreeTopology(numPods) {
   var links = [];
-  this.numSwitches = 0;
+  if (numPods < 2) {
+    throw "Fat-tree topology is only supported for at least 2 pods!"
+  }
+  if (numPods % 2 == 1) {
+    throw "Fat-tree topology is only supported for even number of pods!"
+  }
+
+  /*
+   * First, connect all switches within each pod (agg <-> edge). Each pod consists of a
+   * sequential group of switch indices, with the first half allocated to aggregation switches,
+   * and the second half to edge switches.
+   *
+   * For example, in a 4-pod network, the first pod consists of switches 0-3, where switches
+   * 0 and 1 are aggregation switches, and switches 2 and 3 are edge switches. Then, the second
+   * pod consists of switches 4-7, and so on.
+   */
+  var numSwitchesPerPod = numPods
+  for (var p = 0; p < numPods; p++) {
+    var podOffset = p * numSwitchesPerPod; // Switch index offset by pod
+    for (var aggIndex = 0; aggIndex < numPods / 2; aggIndex++) {
+      for (var edgeIndex = numPods / 2; edgeIndex < numPods; edgeIndex++) {
+        var aggSwitchIndex = podOffset + aggIndex;
+        var edgeSwitchIndex = podOffset + edgeIndex;
+        links.push(new DirectedLink(aggSwitchIndex, edgeSwitchIndex));
+        links.push(new DirectedLink(edgeSwitchIndex, aggSwitchIndex));
+      }
+    }
+  }
+  /*
+   * Next, connect each pod to core switches (core <-> agg). For a k-pod fat-tree, there are
+   * (k/2)^2 core switches. The i'th k/2 core switch is connected to the i'th aggregation switch
+   * of each pod.
+   *
+   * For example, in a 4-pod network, there are 16 non-core switches and 4 core switches. Thus,
+   * switches 16-19 are core switches. Core switches 16 and 17 are connected to the first aggregate
+   * switch of each pod (i.e. 0, 4, 8, 12), and core switches 18 and 19 are connected to the second
+   * (i.e. 1, 5, 9, 13).
+   */
+  var coreOffset = numSwitchesPerPod * numPods; // Index offset for core switches
+  var numCoreSwitches = Math.pow(numPods / 2, 2);
+  for (var c = 0; c < numCoreSwitches; c++) {
+    var aggOffset = Math.floor(c / (numPods / 2));
+    for (var p = 0; p < numPods; p++) {
+      var podOffset = p * numSwitchesPerPod;
+      var coreSwitchIndex = coreOffset + c;
+      var aggSwitchIndex = podOffset + aggOffset;
+      links.push(new DirectedLink(coreSwitchIndex, aggSwitchIndex));
+      links.push(new DirectedLink(aggSwitchIndex, coreSwitchIndex));
+    }
+  }
+
+  // Switches within pods + core switches
+  this.numSwitches = numSwitchesPerPod * numPods + numCoreSwitches;
   this.links = links;
 }
