@@ -74,14 +74,9 @@ function StarTopology(numSwitches) {
  * ACM SIGCOMM Computer Communication Review. Vol. 38. No. 4. ACM, 2008.
  * (http://cseweb.ucsd.edu/~vahdat/papers/sigcomm08.pdf)
  */
-function FatTreeTopology(numPods) {
+function FatTreeTopology(numSwitches) {
   var links = [];
-  if (numPods < 2) {
-    throw "Fat-tree topology is only supported for at least 2 pods!"
-  }
-  if (numPods % 2 == 1) {
-    throw "Fat-tree topology is only supported for even number of pods!"
-  }
+  var numPods = switchesToPods(numSwitches)
 
   /*
    * First, connect all switches within each pod (agg <-> edge). Each pod consists of a
@@ -130,4 +125,36 @@ function FatTreeTopology(numPods) {
   // Switches within pods + core switches
   this.numSwitches = numSwitchesPerPod * numPods + numCoreSwitches;
   this.links = links;
+}
+
+/*
+ * Convert number of switches to approximate number of Fat-tree pods.
+ *
+ * For a k-pod fat-tree, there are k switches per pod. This adds up to k*k non-core switches.
+ * Since there are (k/2)^2 core switches, the total number of switches adds up to k*k + (k/2)^2.
+ * This is equal to 5/4 k^2, and the inverse is sqrt(4/5 * s).
+ *
+ * Return the closest number of pods rounded down to the nearest multiple of 2.
+ */
+function switchesToPods(numSwitches) {
+  if (numSwitches < 5) {
+    throw "Fat-tree topology is only supported for at least 5 switches (2 pods)!"
+  }
+  var numPods = Math.sqrt(4 / 5 * numSwitches)
+  return Math.floor(numPods / 2) * 2
+}
+
+/*
+ * Convert number of Fat-tree pods to number of switches.
+ */
+function podsToSwitches(numPods) {
+  if (numPods < 2) {
+    throw "Fat-tree topology is only supported for at least 2 pods!"
+  }
+  if (numPods % 2 == 1) {
+    throw "Fat-tree topology is only supported for even number of pods!"
+  }
+  var numSwitchesPerPod = numPods
+  var numCoreSwitches = Math.pow(numPods / 2, 2);
+  return numSwitchesPerPod * numPods + numCoreSwitches;
 }

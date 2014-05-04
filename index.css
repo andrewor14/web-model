@@ -178,6 +178,13 @@ h1, h3 {
   margin-top: 10px;
 }
 
+.right-slider-short {
+  float: none;
+  left: calc(50% - 35px);
+  width: 70px;
+  margin-top: 10px;
+}
+
 #convergence-percentiles {
   margin: 50px 0 0 25px;
   width: 320px;

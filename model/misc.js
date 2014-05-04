@@ -6,14 +6,6 @@
  * Miscellaneous helper functions
  */
 
-var ITERATIONS = 2500.0;
-var MAX_PS = 1 - 1 / ITERATIONS;
-
-function updateMaxIterations(its) {
-  ITERATIONS = its;
-  MAX_PS = 1 - 1 / ITERATIONS;
-}
-
 /* Draw a random sample from the given Exponential distribution */
 function nextExponential(lmbda) {
   return Math.log((1 - Math.random()) / lmbda) / (-lmbda);
@@ -83,7 +75,7 @@ function calculatePercentile(datapoints, pctile) {
 
 /* Calculates a percentile value of a given Pareto distribution */
 function calculateParetoPercentile(alpha, xmin, pctile) {
-  var ITERATIONS = Math.max(10000.0, 1 / (1 - pctile));
+  var ITERATIONS = Math.min(Math.max(10000.0, 1 / (1 - pctile)), 100000.0);
   var i = 0;
   var latencies = [];
   for (i = 0; i < ITERATIONS; i++) {

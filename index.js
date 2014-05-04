@@ -17,6 +17,7 @@ var initialized = false;
 
 var parameterValues = {
   numControllers: 3,
+  numSwitches: 20,
   iterations: 1000,
   ralpha: 3.8,
   rxmin: 1.55,
@@ -29,10 +30,10 @@ var parameterValues = {
 };
 
 var defaultTopologies = {
-  "20-switch mesh": new MeshTopology(20),
-  "20-switch ring": new RingTopology(20),
-  "20-switch star": new StarTopology(20),
-  "4-pod fat-tree": new FatTreeTopology(4),
+  "Mesh": MeshTopology,
+  "Ring": RingTopology,
+  "Star": StarTopology,
+  "Fat-tree": FatTreeTopology
 };
 
 var currentTopology = Object.keys(defaultTopologies)[0];
@@ -43,8 +44,10 @@ var currentTopology = Object.keys(defaultTopologies)[0];
  */
 
 function initialize() {
-  initializeSliders();
-  initializeTopologyDropdown();
+  constructSliders();
+  constructTopologyDropdown();
+  editNumSwitches(parameterValues.numSwitches);
+  editNumControllers(parameterValues.numControllers);
   editIterations(parameterValues.iterations);
   editRAlpha(parameterValues.ralpha);
   editRXmin(parameterValues.rxmin);
@@ -60,7 +63,11 @@ function initialize() {
   initialized = true;
 }
 
-function initializeSliders() {
+/*
+ * Construct all sliders.
+ */
+function constructSliders() {
+  constructNumElementsSlider(parameterValues.numSwitches);
   jQuery("#num-controllers-slider").slider({
     min: 1,
     max: 10,
@@ -143,7 +150,42 @@ function initializeSliders() {
   });
 }
 
-function initializeTopologyDropdown() {
+/*
+ * Construct the slider representing the number of switches or pods.
+ */
+function constructNumElementsSlider(startingValue) {
+  if (jQuery("#num-elements-key").text() == "Number of switches: ") {
+    jQuery("#num-elements-slider").slider({
+      min: 2,
+      max: 45,
+      step: 1,
+      value: startingValue,
+      change: function (event, ui) {
+        editNumElements(ui.value);
+      }
+    });
+    jQuery("#num-elements-slider").removeClass("right-slider-short");
+    jQuery("#num-elements-slider").addClass("right-slider");
+  }
+  if (jQuery("#num-elements-key").text() == "Number of pods: ") {
+    jQuery("#num-elements-slider").slider({
+      min: 2,
+      max: 6,
+      step: 2,
+      value: startingValue,
+      change: function (event, ui) {
+        editNumElements(ui.value);
+      }
+    });
+    jQuery("#num-elements-slider").removeClass("right-slider");
+    jQuery("#num-elements-slider").addClass("right-slider-short");
+  }
+}
+
+/*
+ * Construct the dropdown menu representing the choice of topology.
+ */
+function constructTopologyDropdown() {
   jQuery.each(defaultTopologies, function(name, topology) {
     jQuery("<option></option>")
       .appendTo("#topology-dropdown")
@@ -152,10 +194,39 @@ function initializeTopologyDropdown() {
   });
   jQuery("#topology-dropdown").change(function() {
     currentTopology = jQuery(this).val();
+    // If topology is fat-tree display number of pods; else, display number of switches
+    jQuery("#num-elements-key").text(function(i, oldKey) {
+      // If the existing element refers to switches, convert this number to pods
+      if (isFatTree(currentTopology) && oldKey == "Number of switches: ") {
+        jQuery("#num-elements-key").text("Number of pods: ")
+        jQuery("#num-elements-value").text(function(j, oldValue) {
+          var numSwitches = parseInt(oldValue);
+          var numPods = switchesToPods(numSwitches);
+          constructNumElementsSlider(numPods)
+          return numPods;
+        })
+      }
+      // If the existing element refers to pods, convert this number to switches
+      if (!isFatTree(currentTopology) && oldKey == "Number of pods: ") {
+        jQuery("#num-elements-key").text("Number of switches: ")
+        jQuery("#num-elements-value").text(function(j, oldValue) {
+          var numPods = parseInt(oldValue);
+          var numSwitches = podsToSwitches(numPods);
+          constructNumElementsSlider(numSwitches);
+          return numSwitches;
+        });
+      }
+    });
     updateConvergenceTime();
   });
 }
 
+/*
+ * Return whether the given topology name refers to fat-trees.
+ */
+function isFatTree(topologyName) {
+  return topologyName.indexOf("Fat-tree") >= 0 || topologyName.indexOf("fat-tree") >= 0
+}
 
 /*
  * Generate convergence time data points.
@@ -250,69 +321,70 @@ function DataContainer(numSwitches, links) {
  */
 
 function updateConvergenceTime() {
-  var topology = defaultTopologies[currentTopology];
+  var numSwitches = parameterValues.numSwitches;
+  var topology = new defaultTopologies[currentTopology](numSwitches);
   var data = DataContainer(topology.numSwitches, topology.links);
   updateConvergencePercentiles(data);
   drawConvergenceCdf(data);
 }
 
 function updateConvergencePercentiles(data) {
-  document.getElementById("traditional_latency50pct").innerHTML =
-    roundNumber(calculatePercentile(data.traditionalTimes, 0.5), 2);
-  document.getElementById("traditional_latency999pct").innerHTML =
-    roundNumber(calculatePercentile(data.traditionalTimes, 0.999), 2);
-  document.getElementById("single_latency50pct").innerHTML =
-    roundNumber(calculatePercentile(data.singleTimes, 0.5), 2);
-  document.getElementById("single_latency999pct").innerHTML =
-    roundNumber(calculatePercentile(data.singleTimes, 0.999), 2);
-  document.getElementById("onepc_latency50pct").innerHTML =
-    roundNumber(calculatePercentile(data.onepcTimes, 0.5), 2);
-  document.getElementById("twopc_latency50pct").innerHTML =
-    roundNumber(calculatePercentile(data.twopcTimes, 0.5), 2);
-  document.getElementById("paxos_latency50pct").innerHTML =
-    roundNumber(calculatePercentile(data.paxosTimes, 0.5), 2);
-  document.getElementById("onepc_latency999pct").innerHTML =
-    roundNumber(calculatePercentile(data.onepcTimes, 0.999), 2);
-  document.getElementById("twopc_latency999pct").innerHTML =
-    roundNumber(calculatePercentile(data.twopcTimes, 0.999), 2);
-  document.getElementById("paxos_latency999pct").innerHTML =
-    roundNumber(calculatePercentile(data.paxosTimes, 0.999), 2);
+  jQuery("#traditional_latency50pct").text(
+    roundNumber(calculatePercentile(data.traditionalTimes, 0.5), 2));
+  jQuery("#traditional_latency999pct").text(
+    roundNumber(calculatePercentile(data.traditionalTimes, 0.999), 2));
+  jQuery("#single_latency50pct").text(
+    roundNumber(calculatePercentile(data.singleTimes, 0.5), 2));
+  jQuery("#single_latency999pct").text(
+    roundNumber(calculatePercentile(data.singleTimes, 0.999), 2));
+  jQuery("#onepc_latency50pct").text(
+    roundNumber(calculatePercentile(data.onepcTimes, 0.5), 2));
+  jQuery("#twopc_latency50pct").text(
+    roundNumber(calculatePercentile(data.twopcTimes, 0.5), 2));
+  jQuery("#paxos_latency50pct").text(
+    roundNumber(calculatePercentile(data.paxosTimes, 0.5), 2));
+  jQuery("#onepc_latency999pct").text(
+    roundNumber(calculatePercentile(data.onepcTimes, 0.999), 2));
+  jQuery("#twopc_latency999pct").text(
+    roundNumber(calculatePercentile(data.twopcTimes, 0.999), 2));
+  jQuery("#paxos_latency999pct").text(
+    roundNumber(calculatePercentile(data.paxosTimes, 0.999), 2));
 }
 
 function updateReadLatencyPercentiles() {
   var alpha = parameterValues.ralpha
   var xmin = parameterValues.rxmin
-  document.getElementById("rlatency50pct").innerHTML =
-    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2);
-  document.getElementById("rlatency999pct").innerHTML =
-    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2);
+  jQuery("#rlatency50pct").text(
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2));
+  jQuery("#rlatency999pct").text(
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2));
 }
 
 function updateWriteLatencyPercentiles() {
   var alpha = parameterValues.walpha
   var xmin = parameterValues.wxmin
-  document.getElementById("wlatency50pct").innerHTML =
-    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2);
-  document.getElementById("wlatency999pct").innerHTML =
-    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2);
+  jQuery("#wlatency50pct").text(
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2));
+  jQuery("#wlatency999pct").text(
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2));
 }
 
 function updateSwitchNetworkLatencyPercentiles() {
   var alpha = parameterValues.psalpha
   var xmin = parameterValues.psxmin
-  document.getElementById("pslatency50pct").innerHTML =
-    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2);
-  document.getElementById("pslatency999pct").innerHTML =
-    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2);
+  jQuery("#pslatency50pct").text(
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2));
+  jQuery("#pslatency999pct").text(
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2));
 }
 
 function updateControllerNetworkLatencyPercentiles() {
   var alpha = parameterValues.pcalpha
   var xmin = parameterValues.pcxmin
-  document.getElementById("pclatency50pct").innerHTML =
-    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2);
-  document.getElementById("pclatency999pct").innerHTML =
-    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2);
+  jQuery("#pclatency50pct").text(
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2));
+  jQuery("#pclatency999pct").text(
+    roundNumber(calculateParetoPercentile(alpha, xmin, 0.999), 2));
 }
 
 function updateAllParameterPercentiles() {
@@ -327,8 +399,25 @@ function updateAllParameterPercentiles() {
  * Edit values of model parameters.
  */
 
+function editNumSwitches(numSwitches) {
+  jQuery("#num-elements-key").text("Number of switches: ");
+  editNumElements(numSwitches);
+}
+
+function editNumElements(numElements) {
+  jQuery("#num-elements-value").text(numElements);
+  if (jQuery("#num-elements-key").text() == "Number of pods: ") {
+    parameterValues.numSwitches = podsToSwitches(numElements);
+  } else {
+    parameterValues.numSwitches = numElements;
+  }
+  if (initialized) {
+    updateConvergenceTime();
+  }
+}
+
 function editNumControllers(numControllers) {
-  document.getElementById("num-controllers-value").innerHTML = numControllers;
+  jQuery("#num-controllers-value").text(numControllers);
   parameterValues.numControllers = numControllers;
   if (initialized) {
     updateConvergenceTime();
@@ -336,7 +425,7 @@ function editNumControllers(numControllers) {
 }
 
 function editIterations(iterations) {
-  document.getElementById("iterations-value").innerHTML = iterations;
+  jQuery("#iterations-value").text(iterations);
   parameterValues.iterations = iterations;
   if (initialized) {
     updateConvergenceTime();
@@ -344,7 +433,7 @@ function editIterations(iterations) {
 }
 
 function editRAlpha(alpha) {
-  document.getElementById("ralpha-value").innerHTML = alpha;
+  jQuery("#ralpha-value").text(alpha);
   parameterValues.ralpha = alpha;
   if (initialized) {
     updateReadLatencyPercentiles();
@@ -354,7 +443,7 @@ function editRAlpha(alpha) {
 }
 
 function editRXmin(xmin) {
-  document.getElementById("rxmin-value").innerHTML = xmin;
+  jQuery("#rxmin-value").text(xmin);
   parameterValues.rxmin = xmin
   if (initialized) {
     updateReadLatencyPercentiles();
@@ -364,7 +453,7 @@ function editRXmin(xmin) {
 }
 
 function editWAlpha(alpha) {
-  document.getElementById("walpha-value").innerHTML = alpha;
+  jQuery("#walpha-value").text(alpha);
   parameterValues.walpha = alpha;
   if (initialized) {
     updateWriteLatencyPercentiles();
@@ -374,7 +463,7 @@ function editWAlpha(alpha) {
 }
 
 function editWXmin(xmin) {
-  document.getElementById("wxmin-value").innerHTML = xmin;
+  jQuery("#wxmin-value").text(xmin);
   parameterValues.wxmin = xmin;
   if (initialized) {
     updateWriteLatencyPercentiles();
@@ -384,7 +473,7 @@ function editWXmin(xmin) {
 }
 
 function editPsAlpha(alpha) {
-  document.getElementById("psalpha-value").innerHTML = alpha;
+  jQuery("#psalpha-value").text(alpha);
   parameterValues.psalpha = alpha;
   if (initialized) {
     updateSwitchNetworkLatencyPercentiles();
@@ -394,7 +483,7 @@ function editPsAlpha(alpha) {
 }
 
 function editPsXmin(xmin) {
-  document.getElementById("psxmin-value").innerHTML = xmin;
+  jQuery("#psxmin-value").text(xmin);
   parameterValues.psxmin = xmin
   if (initialized) {
     updateSwitchNetworkLatencyPercentiles();
@@ -404,7 +493,7 @@ function editPsXmin(xmin) {
 }
 
 function editPcAlpha(alpha) {
-  document.getElementById("pcalpha-value").innerHTML = alpha;
+  jQuery("#pcalpha-value").text(alpha);
   parameterValues.pcalpha = alpha
   if (initialized) {
     updateControllerNetworkLatencyPercentiles();
@@ -414,7 +503,7 @@ function editPcAlpha(alpha) {
 }
 
 function editPcXmin(xmin) {
-  document.getElementById("pcxmin-value").innerHTML = xmin;
+  jQuery("#pcxmin-value").text(xmin);
   parameterValues.pcxmin = xmin
   if (initialized) {
     updateControllerNetworkLatencyPercentiles();
