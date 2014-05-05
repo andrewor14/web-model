@@ -12,7 +12,7 @@
  */
 
 /*
- * Compute samples that represent times to convergence using the traditional control plane.
+ * Compute the time to convergence after a link failure using the traditional control plane.
  * More specifically, this uses traditional link-state route computation through flooding.
  *
  * Given a single failed link, the switches attached to the link floods this information to
@@ -25,39 +25,35 @@
  */
 
 function noController(srcToRemove, destToRemove, afterMatrix, switchesToUpdate,
-  walpha, ralpha, pcalpha, psalpha, wxmin, rxmin, pcxmin, psxmin, iterations) {
+  walpha, ralpha, pcalpha, psalpha, wxmin, rxmin, pcxmin, psxmin) {
 
-  var datapoints = [];
-  for (var i = 0; i < iterations; i++) {
-    // Find the max number of hops to any other node
-    var srcMaxHops = Number.NEGATIVE_INFINITY;
-    var destMaxHops = Number.NEGATIVE_INFINITY;
-    for (var j = 0; j < switchesToUpdate.length; j++){
-      var srcHops = linksOnPath(srcToRemove, switchesToUpdate[j], afterMatrix).length;
-      var destHops = linksOnPath(destToRemove, switchesToUpdate[j], afterMatrix).length;
-      if (srcHops > srcMaxHops) {
-        srcMaxHops = srcHops;
-      }
-      if (destHops > destMaxHops) {
-        destMaxHops = destHops;
-      }
+  // Find the max number of hops to any other node
+  var srcMaxHops = Number.NEGATIVE_INFINITY;
+  var destMaxHops = Number.NEGATIVE_INFINITY;
+  for (var j = 0; j < switchesToUpdate.length; j++){
+    var srcHops = linksOnPath(srcToRemove, switchesToUpdate[j], afterMatrix).length;
+    var destHops = linksOnPath(destToRemove, switchesToUpdate[j], afterMatrix).length;
+    if (srcHops > srcMaxHops) {
+      srcMaxHops = srcHops;
     }
-    // Find the max of the two latencies
-    var srcLatency = 0;
-    var destLatency = 0;
-    for (var s = 0; s < srcMaxHops; s++) {
-      srcLatency += nextPareto(psalpha, psxmin);  // TODO(ao): Incorrect use of Ps
+    if (destHops > destMaxHops) {
+      destMaxHops = destHops;
     }
-    for (var d = 0; d < destMaxHops; d++) {
-      destLatency += nextPareto(psalpha, psxmin); // TODO(ao): Incorrect use of Ps
-    }
-    datapoints.push(Math.max(srcLatency, destLatency));
   }
-  return datapoints;
+  // Find the max of the two latencies
+  var srcLatency = 0;
+  var destLatency = 0;
+  for (var s = 0; s < srcMaxHops; s++) {
+    srcLatency += nextPareto(psalpha, psxmin);  // TODO(ao): Incorrect use of Ps
+  }
+  for (var d = 0; d < destMaxHops; d++) {
+    destLatency += nextPareto(psalpha, psxmin); // TODO(ao): Incorrect use of Ps
+  }
+  return Math.max(srcLatency, destLatency);
 }
 
 /*
- * Compute samples that represent times to convergence using the single controller control plane.
+ * Compute the time to convergence after a network event using the single controller control plane.
  *
  * In this simple replication scheme, the controller computes a value, commits, and forwards
  * result to all client switches.
@@ -67,34 +63,30 @@ function noController(srcToRemove, destToRemove, afterMatrix, switchesToUpdate,
  * and exchangeOverhead is the cost incurred by controllers communicating with each other.
  */
 function singleController(numSwitches, numControllers,
-  walpha, ralpha, pcalpha, psalpha, wxmin, rxmin, pcxmin, psxmin, iterations) {
+  walpha, ralpha, pcalpha, psalpha, wxmin, rxmin, pcxmin, psxmin) {
 
   // For purposes of comparison with other replication schemes, ignore the number of controllers.
 
-  var datapoints = [];
-  for (var i = 0; i < iterations; i++) {
-    var totalLatency = 0;
-    var controllerOverhead = 0;
-    var exchangeOverhead = 0;
-    controllerOverhead += nextPareto(psalpha, psxmin);
-    exchangeOverhead += nextPareto(walpha, wxmin);
+  var totalLatency = 0;
+  var controllerOverhead = 0;
+  var exchangeOverhead = 0;
+  controllerOverhead += nextPareto(psalpha, psxmin);
+  exchangeOverhead += nextPareto(walpha, wxmin);
 
-    var network_updateLatencies = [];
-    for (var j = 0; j < numSwitches; j++) {
-      network_updateLatencies.push(nextPareto(psalpha, psxmin));
-    }
-    if (numSwitches != 0) {
-      controllerOverhead += Math.max.apply(null, network_updateLatencies);
-    }
-    totalLatency += controllerOverhead;
-    totalLatency += exchangeOverhead;
-    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead]);
+  var network_updateLatencies = [];
+  for (var j = 0; j < numSwitches; j++) {
+    network_updateLatencies.push(nextPareto(psalpha, psxmin));
   }
-  return datapoints;
+  if (numSwitches != 0) {
+    controllerOverhead += Math.max.apply(null, network_updateLatencies);
+  }
+  totalLatency += controllerOverhead;
+  totalLatency += exchangeOverhead;
+  return [totalLatency, controllerOverhead, exchangeOverhead];
 }
 
 /*
- * Compute samples that represent times to convergence using a control plane distributed with
+ * Compute the time to convergence after a network event using a control plane distributed with
  * one-phase commit. This assumes 1 master and N-1 backups, where N is the number of controllers.
  *
  * In one-phase commit,
@@ -116,49 +108,45 @@ function onePhaseCommit(numSwitches, numControllers,
     return [];
   }
 
-  var datapoints = [];
   var quorumSize = Math.floor(numControllers / 2) + 1;
-  for (var i = 0; i < iterations; i++) {
-    var totalLatency = 0;
-    var controllerOverhead = 0;
-    var exchangeOverhead = 0;
-    var colocation = (Math.floor(Math.random() * numControllers) != 0);
-    controllerOverhead += nextPareto(psalpha, psxmin);
+  var totalLatency = 0;
+  var controllerOverhead = 0;
+  var exchangeOverhead = 0;
+  var colocation = (Math.floor(Math.random() * numControllers) != 0);
+  controllerOverhead += nextPareto(psalpha, psxmin);
 
-    // Phase 1: N requests, Q responses
-    var requestLatencies = [];
-    var responseLatencies = [];
-    for (var j = 1; j <= numControllers - 1; j++) {
-      requestLatencies.push(nextPareto(pcalpha, pcxmin));
-      if (quorumSize >= j) {
-        responseLatencies.push(nextPareto(pcalpha, pcxmin));
-      }
+  // Phase 1: N requests, Q responses
+  var requestLatencies = [];
+  var responseLatencies = [];
+  for (var j = 1; j <= numControllers - 1; j++) {
+    requestLatencies.push(nextPareto(pcalpha, pcxmin));
+    if (quorumSize >= j) {
+      responseLatencies.push(nextPareto(pcalpha, pcxmin));
     }
-
-    if (!colocation) {
-      exchangeOverhead += nextPareto(pcalpha, pcxmin);             // A1
-      exchangeOverhead += Math.max.apply(null, requestLatencies);  // A2
-    } else {
-      exchangeOverhead += Math.max.apply(null, requestLatencies);  // B1
-      exchangeOverhead += Math.max.apply(null, responseLatencies); // B2
-    }
-    exchangeOverhead += nextPareto(walpha, wxmin);                 // A3, B3
-    var network_updateLatencies = [];
-    for (var j = 0; j < numSwitches; j++) {
-      network_updateLatencies.push(nextPareto(psalpha, psxmin));
-    }
-    if (numSwitches != 0) {
-      controllerOverhead += Math.max.apply(null, network_updateLatencies);
-    }
-    totalLatency += controllerOverhead;
-    totalLatency += exchangeOverhead;
-    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead]);
   }
-  return datapoints;
+
+  if (!colocation) {
+    exchangeOverhead += nextPareto(pcalpha, pcxmin);             // A1
+    exchangeOverhead += Math.max.apply(null, requestLatencies);  // A2
+  } else {
+    exchangeOverhead += Math.max.apply(null, requestLatencies);  // B1
+    exchangeOverhead += Math.max.apply(null, responseLatencies); // B2
+  }
+  exchangeOverhead += nextPareto(walpha, wxmin);                 // A3, B3
+  var network_updateLatencies = [];
+  for (var j = 0; j < numSwitches; j++) {
+    network_updateLatencies.push(nextPareto(psalpha, psxmin));
+  }
+  if (numSwitches != 0) {
+    controllerOverhead += Math.max.apply(null, network_updateLatencies);
+  }
+  totalLatency += controllerOverhead;
+  totalLatency += exchangeOverhead;
+  return [totalLatency, controllerOverhead, exchangeOverhead];
 }
 
 /*
- * Compute samples that represent times to convergence using a control plane distributed with
+ * Compute the time to convergence after a network event using a control plane distributed with
  * two-phase commit. This assumes 1 master and N-1 backups, where N is the number of controllers.
  *
  * In two-phase commit,
@@ -181,58 +169,55 @@ function twoPhaseCommit(numSwitches, numControllers,
     return [];
   }
 
-  var datapoints = [];
   var quorumSize = Math.floor(numControllers / 2) + 1;
-  for (var i = 0; i < iterations; i++) {
-    var totalLatency = 0;
-    var controllerOverhead = 0;
-    var exchangeOverhead = 0;
-    var colocation = (Math.floor(Math.random() * numControllers) == 0);
-    controllerOverhead += nextPareto(psalpha, psxmin);
+  var totalLatency = 0;
+  var controllerOverhead = 0;
+  var exchangeOverhead = 0;
+  var colocation = (Math.floor(Math.random() * numControllers) == 0);
+  controllerOverhead += nextPareto(psalpha, psxmin);
 
-    // Phase 1: N requests, Q responses
-    var requestLatencies = [];
-    var responseLatencies = [];
-    for (var j = 1; j <= numControllers - 1; j++) {
-      requestLatencies.push(nextPareto(pcalpha, pcxmin));
-      if (quorumSize >= j) {
-        responseLatencies.push(nextPareto(pcalpha, pcxmin));
-      }
+  // Phase 1: N requests, Q responses
+  var requestLatencies = [];
+  var responseLatencies = [];
+  for (var j = 1; j <= numControllers - 1; j++) {
+    requestLatencies.push(nextPareto(pcalpha, pcxmin));
+    if (quorumSize >= j) {
+      responseLatencies.push(nextPareto(pcalpha, pcxmin));
     }
-
-    // Phase 2: N requests
-    var requestLatencies2 = [];
-    for (var j = 1; j <= numControllers - 1; j++) {
-      requestLatencies2.push(nextPareto(pcalpha, pcxmin));
-    }
-
-    if(!colocation) {
-      exchangeOverhead += nextPareto(pcalpha, pcxmin);             // A1
-      exchangeOverhead += Math.max.apply(null, requestLatencies);  // A2
-      exchangeOverhead += Math.max.apply(null, responseLatencies); // A3
-      exchangeOverhead += nextPareto(walpha, wxmin);               // A4
-      exchangeOverhead += Math.max.apply(null, requestLatencies2);
-    } else {
-      exchangeOverhead += Math.max.apply(null, requestLatencies);  // B1
-      exchangeOverhead += Math.max.apply(null, responseLatencies); // B2
-    }
-    exchangeOverhead += nextPareto(walpha, wxmin);                 // A5, B3
-    var network_updateLatencies = [];
-    for (var j = 0; j < numSwitches; j++) {
-      network_updateLatencies.push(nextPareto(psalpha, psxmin));
-    }
-    if (numSwitches != 0) {
-      controllerOverhead += Math.max.apply(null, network_updateLatencies);
-    }
-    totalLatency += controllerOverhead;
-    totalLatency += exchangeOverhead;
-    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead]);
   }
-  return datapoints;
+
+  // Phase 2: N requests
+  var requestLatencies2 = [];
+  for (var j = 1; j <= numControllers - 1; j++) {
+    requestLatencies2.push(nextPareto(pcalpha, pcxmin));
+  }
+
+  if(!colocation) {
+    exchangeOverhead += nextPareto(pcalpha, pcxmin);             // A1
+    exchangeOverhead += Math.max.apply(null, requestLatencies);  // A2
+    exchangeOverhead += Math.max.apply(null, responseLatencies); // A3
+    exchangeOverhead += nextPareto(walpha, wxmin);               // A4
+    exchangeOverhead += Math.max.apply(null, requestLatencies2);
+  } else {
+    exchangeOverhead += Math.max.apply(null, requestLatencies);  // B1
+    exchangeOverhead += Math.max.apply(null, responseLatencies); // B2
+  }
+  exchangeOverhead += nextPareto(walpha, wxmin);                 // A5, B3
+  var network_updateLatencies = [];
+  for (var j = 0; j < numSwitches; j++) {
+    network_updateLatencies.push(nextPareto(psalpha, psxmin));
+  }
+  if (numSwitches != 0) {
+    controllerOverhead += Math.max.apply(null, network_updateLatencies);
+  }
+  totalLatency += controllerOverhead;
+  totalLatency += exchangeOverhead;
+  return [totalLatency, controllerOverhead, exchangeOverhead];
 }
 
 /*
- * Compute samples that represent times to convergence using a control plane distributed with Paxos.
+ * Compute the time to convergence after a network event using a control plane distributed with
+ * the Paxos implementation of replicated state machines.
  *
  * Assumptions:
  *   We do not consider optimizations that involve eliminating the Prepare phase.
@@ -262,66 +247,62 @@ function paxosCommit(numSwitches, numControllers,
     return [];
   }
 
-  var datapoints = [];
   var quorumSize = Math.floor(numControllers / 2) + 1;
-  for (var i = 0; i < iterations; i++) {
-    var totalLatency = 0;
-    var controllerOverhead = 0;
-    var exchangeOverhead = 0;
-    var colocation = (Math.floor(Math.random() * numControllers) == 0);
-    controllerOverhead += nextPareto(psalpha, psxmin);
+  var totalLatency = 0;
+  var controllerOverhead = 0;
+  var exchangeOverhead = 0;
+  var colocation = (Math.floor(Math.random() * numControllers) == 0);
+  controllerOverhead += nextPareto(psalpha, psxmin);
 
-    // Phase 1: N requests, Q responses
-    var requestLatencies = [];
-    var responseLatencies = [];
-    for (var j = 1; j <= numControllers - 1; j++) {
-      requestLatencies.push(nextPareto(pcalpha, pcxmin));
-      if (quorumSize >= j) {
-        responseLatencies.push(nextPareto(pcalpha, pcxmin));
-      }
+  // Phase 1: N requests, Q responses
+  var requestLatencies = [];
+  var responseLatencies = [];
+  for (var j = 1; j <= numControllers - 1; j++) {
+    requestLatencies.push(nextPareto(pcalpha, pcxmin));
+    if (quorumSize >= j) {
+      responseLatencies.push(nextPareto(pcalpha, pcxmin));
     }
-
-    // Phase 2: N requests, Q responses
-    var requestLatencies2 = [];
-    var responseLatencies2 = [];
-    for (var j = 1; j <= numControllers - 1; j++) {
-      requestLatencies2.push(nextPareto(pcalpha, pcxmin));
-      if (quorumSize >= j) {
-        responseLatencies2.push(nextPareto(pcalpha, pcxmin));
-      }
-    }
-
-    // Phase 3: N notifications
-    var notificationLatencies = [];
-    for (var j = 1; j <= numControllers - 1; j++) {
-      notificationLatencies.push(nextPareto(pcalpha, pcxmin));
-    }
-
-    if(!colocation) {
-      exchangeOverhead += nextPareto(pcalpha, pcxmin);              // A1
-      exchangeOverhead += Math.max.apply(null, requestLatencies);   // A2
-      exchangeOverhead += Math.max.apply(null, responseLatencies);  // A3
-      exchangeOverhead += Math.max.apply(null, requestLatencies2);  // A4
-      exchangeOverhead += Math.max.apply(null, responseLatencies2); // A5
-      exchangeOverhead += nextPareto(walpha, wxmin);                // A6
-      exchangeOverhead += Math.max.apply(null, notificationLatencies);
-    } else {
-      exchangeOverhead += Math.max.apply(null, requestLatencies);   // B1
-      exchangeOverhead += Math.max.apply(null, responseLatencies);  // B2
-      exchangeOverhead += Math.max.apply(null, requestLatencies2);  // B3
-      exchangeOverhead += Math.max.apply(null, responseLatencies2); // B4
-    }
-    exchangeOverhead += nextPareto(walpha, wxmin);                  // A7, B5
-    var network_updateLatencies = [];
-    for (var j = 0; j < numSwitches; j++) {
-      network_updateLatencies.push(nextPareto(psalpha, psxmin));
-    }
-    if (numSwitches != 0) {
-      controllerOverhead += Math.max.apply(null, network_updateLatencies);
-    }
-    totalLatency += controllerOverhead;
-    totalLatency += exchangeOverhead;
-    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead]);
   }
-  return datapoints;
+
+  // Phase 2: N requests, Q responses
+  var requestLatencies2 = [];
+  var responseLatencies2 = [];
+  for (var j = 1; j <= numControllers - 1; j++) {
+    requestLatencies2.push(nextPareto(pcalpha, pcxmin));
+    if (quorumSize >= j) {
+      responseLatencies2.push(nextPareto(pcalpha, pcxmin));
+    }
+  }
+
+  // Phase 3: N notifications
+  var notificationLatencies = [];
+  for (var j = 1; j <= numControllers - 1; j++) {
+    notificationLatencies.push(nextPareto(pcalpha, pcxmin));
+  }
+
+  if(!colocation) {
+    exchangeOverhead += nextPareto(pcalpha, pcxmin);              // A1
+    exchangeOverhead += Math.max.apply(null, requestLatencies);   // A2
+    exchangeOverhead += Math.max.apply(null, responseLatencies);  // A3
+    exchangeOverhead += Math.max.apply(null, requestLatencies2);  // A4
+    exchangeOverhead += Math.max.apply(null, responseLatencies2); // A5
+    exchangeOverhead += nextPareto(walpha, wxmin);                // A6
+    exchangeOverhead += Math.max.apply(null, notificationLatencies);
+  } else {
+    exchangeOverhead += Math.max.apply(null, requestLatencies);   // B1
+    exchangeOverhead += Math.max.apply(null, responseLatencies);  // B2
+    exchangeOverhead += Math.max.apply(null, requestLatencies2);  // B3
+    exchangeOverhead += Math.max.apply(null, responseLatencies2); // B4
+  }
+  exchangeOverhead += nextPareto(walpha, wxmin);                  // A7, B5
+  var network_updateLatencies = [];
+  for (var j = 0; j < numSwitches; j++) {
+    network_updateLatencies.push(nextPareto(psalpha, psxmin));
+  }
+  if (numSwitches != 0) {
+    controllerOverhead += Math.max.apply(null, network_updateLatencies);
+  }
+  totalLatency += controllerOverhead;
+  totalLatency += exchangeOverhead;
+  return [totalLatency, controllerOverhead, exchangeOverhead];
 }

@@ -257,12 +257,13 @@ function triggerLinkFailure(topology) {
   var afterMatrix = convergedLinkMatrix(numSwitches, afterLinks);
   var _switchesToUpdate = switchesToUpdate(beforeMatrix, afterMatrix);
 
+  var it = parameterValues.iterations
   return new SamplesContainer(
-    computeSamplesTraditional(srcToRemove, destToRemove, afterMatrix, _switchesToUpdate),
-    computeSamples(singleController, _switchesToUpdate.length),
-    computeSamples(onePhaseCommit, _switchesToUpdate.length),
-    computeSamples(twoPhaseCommit, _switchesToUpdate.length),
-    computeSamples(paxosCommit, _switchesToUpdate.length)
+    computeSamplesTraditional(srcToRemove, destToRemove, afterMatrix, _switchesToUpdate, it),
+    computeSamples(singleController, _switchesToUpdate.length, it),
+    computeSamples(onePhaseCommit, _switchesToUpdate.length, it),
+    computeSamples(twoPhaseCommit, _switchesToUpdate.length, it),
+    computeSamples(paxosCommit, _switchesToUpdate.length, it)
   );
 }
 
@@ -270,41 +271,54 @@ function triggerLinkFailure(topology) {
  * Compute samples that represent the time to convergence using the given replication scheme.
  * The replication scheme refers to the algorithm used for interaction between controllers.
  */
-function computeSamples(replicationScheme, numSwitchesToUpdate) {
-  var samples = replicationScheme(
-    numSwitchesToUpdate,
-    parameterValues.numControllers,
-    parameterValues.walpha,
-    parameterValues.ralpha,
-    parameterValues.pcalpha,
-    parameterValues.psalpha,
-    parameterValues.wxmin,
-    parameterValues.rxmin,
-    parameterValues.pcxmin,
-    parameterValues.psxmin,
-    parameterValues.iterations);
-  var endToEndTimes = samples.map(function(v) { return v[0]; });
-  return endToEndTimes;
+function computeSamples(replicationScheme, numSwitchesToUpdate, iterations) {
+  var samples = [];
+  for (var t = 0; t < iterations; t++) {
+    var sample = replicationScheme(
+      numSwitchesToUpdate,
+      parameterValues.numControllers,
+      parameterValues.walpha,
+      parameterValues.ralpha,
+      parameterValues.pcalpha,
+      parameterValues.psalpha,
+      parameterValues.wxmin,
+      parameterValues.rxmin,
+      parameterValues.pcxmin,
+      parameterValues.psxmin,
+      parameterValues.iterations
+    );
+    var endToEndTime = sample[0];
+    samples.push(endToEndTime);
+  }
+  return samples;
 }
 
 /*
  * Compute samples that represent the time to convergence using the traditional routing model.
  */
-function computeSamplesTraditional(srcToRemove, destToRemove, afterMatrix, switchesToUpdate) {
-  return noController(
-    srcToRemove,
-    destToRemove,
-    afterMatrix,
-    switchesToUpdate,
-    parameterValues.walpha,
-    parameterValues.ralpha,
-    parameterValues.pcalpha,
-    parameterValues.psalpha,
-    parameterValues.wxmin,
-    parameterValues.rxmin,
-    parameterValues.pcxmin,
-    parameterValues.psxmin,
-    parameterValues.iterations);
+function computeSamplesTraditional(
+  srcToRemove, destToRemove, afterMatrix, switchesToUpdate, iterations) {
+
+  var samples = [];
+  for (var t = 0; t < iterations; t++) {
+    var sample = noController(
+      srcToRemove,
+      destToRemove,
+      afterMatrix,
+      switchesToUpdate,
+      parameterValues.walpha,
+      parameterValues.ralpha,
+      parameterValues.pcalpha,
+      parameterValues.psalpha,
+      parameterValues.wxmin,
+      parameterValues.rxmin,
+      parameterValues.pcxmin,
+      parameterValues.psxmin,
+      parameterValues.iterations
+    );
+    samples.push(sample);
+  }
+  return samples;
 }
 
 /*
