@@ -6,32 +6,26 @@
  * N: number of replicas
  * Q: number of replicas to wait from before committing
  *
- * {w, r, pc, ps}{alpha, xmin}: parameters describing the message
- * delays. In this implementation, they're Pareto distributed, but
- * this needs not be the case.  See the paper or the site for more
+ * {w, r, pc, ps}{alpha, xmin}: parameters that describe message delays. In this implementation,
+ * they are Pareto distributed, but this need not be the case. See the paper or the site for more
  * description.
+ */
+
+/*
+ * Compute samples that represent times to convergence using the traditional control plane.
+ * More specifically, this uses traditional link-state route computation through flooding.
+ *
+ * Given a single failed link, the switches attached to the link floods this information to
+ * all other switches in the network. Then, the time to convergence is computed by finding
+ * the maximum of the distances from the origin switches to the furthest destination switches.
+ *
+ * TODO(cs): account for additional intermediate link failures
+ *
+ * Requires ./floyd-warshall.js
  */
 
 function noController(srcToRemove, destToRemove, afterMatrix, switchesToUpdate,
   walpha, ralpha, pcalpha, psalpha, wxmin, rxmin, pcxmin, psxmin, iterations) {
-
-  /*
-   * Traditional link-state routing through flooding
-   *
-   * This implementation is given a single failed link, and
-   * computes the convergence time for a network with traditional
-   * routing (no controllers) to recover. Essentially, this means
-   * that we flood our link map to all other switches in parallel,
-   * and compute the maximum distance from us to any other node in the
-   * network.
-   *
-   * TODO(cs): account for additional intermediate link failures
-   *
-   * Requires ./floyd-warshall.js
-   */
-
-  var src = srcToRemove;
-  var dest = destToRemove;
 
   var datapoints = [];
   for (var i = 0; i < iterations; i++) {
@@ -39,8 +33,8 @@ function noController(srcToRemove, destToRemove, afterMatrix, switchesToUpdate,
     var srcMaxHops = Number.NEGATIVE_INFINITY;
     var destMaxHops = Number.NEGATIVE_INFINITY;
     for (var j = 0; j < switchesToUpdate.length; j++){
-      var srcHops = linksOnPath(src, switchesToUpdate[j], afterMatrix).length;
-      var destHops = linksOnPath(dest, switchesToUpdate[j], afterMatrix).length;
+      var srcHops = linksOnPath(srcToRemove, switchesToUpdate[j], afterMatrix).length;
+      var destHops = linksOnPath(destToRemove, switchesToUpdate[j], afterMatrix).length;
       if (srcHops > srcMaxHops) {
         srcMaxHops = srcHops;
       }
@@ -59,23 +53,24 @@ function noController(srcToRemove, destToRemove, afterMatrix, switchesToUpdate,
     }
     datapoints.push(Math.max(srcLatency, destLatency));
   }
-
   return datapoints;
 }
 
-function singleController(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
-  pcxmin, psxmin, iterations) {
+/*
+ * Compute samples that represent times to convergence using the single controller control plane.
+ *
+ * In this simple replication scheme, the controller computes a value, commits, and forwards
+ * result to all client switches.
+ *
+ * Return samples in the form of (totalLatency, controllerOverhead, exchangeOverhead), where
+ * controllerOverhead is the sheer overhead of having to go through a separate control plane,
+ * and exchangeOverhead is the cost incurred by controllers communicating with each other.
+ */
+function singleController(numSwitches, numControllers,
+  walpha, ralpha, pcalpha, psalpha, wxmin, rxmin, pcxmin, psxmin, iterations) {
 
-  /*
-   * Replication scheme: Single Controller
-   *
-   * In this simple replication scheme, the controller computes a value,
-   *   commits, and forwards result to all client switches
-   */
-  if (N != 1) {
-    // For comparison purposes, ignore N
-  }
-  
+  // For purposes of comparison with other replication schemes, ignore the number of controllers.
+
   var datapoints = [];
   for (var i = 0; i < iterations; i++) {
     var totalLatency = 0;
@@ -85,10 +80,10 @@ function singleController(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
     exchangeOverhead += nextPareto(walpha, wxmin);
 
     var network_updateLatencies = [];
-    for (var j = 0; j < S; j++) {
+    for (var j = 0; j < numSwitches; j++) {
       network_updateLatencies.push(nextPareto(psalpha, psxmin));
     }
-    if (S != 0) {
+    if (numSwitches != 0) {
       controllerOverhead += Math.max.apply(null, network_updateLatencies);
     }
     totalLatency += controllerOverhead
@@ -98,42 +93,44 @@ function singleController(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
   return datapoints;
 }
 
-function onePhaseCommit(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
-  pcxmin, psxmin, iterations) {
+/*
+ * Compute samples that represent times to convergence using a control plane distributed with
+ * one-phase commit. This assumes 1 master and N-1 backups, where N is the number of controllers.
+ *
+ * In one-phase commit,
+ *   (A1) Proposer (backup) forwards a request to master
+ *   (A2) Master sends requests to all backups
+ *   (A3) Proposer commits locally and forwards result to all client switches
+ *        (Q Backups respond with ACKs, where Q is the quorum size)
+ *
+ * With co-location, this becomes
+ *   (B1) Master sends requests to all backups
+ *   (B2) Q backups commit locally and respond with ACKs
+ *   (B3) Master commits locally and forwards result to all client switches
+ */
 
-  /*
-   * Replication scheme: One-Phase Commit with 1 Master and N - 1 Backups
-   *
-   * In One-Phase Commit,
-   *   (A1) Proposer (Backup) forwards a request to Master
-   *   (A2) Master sends requests to all Backups
-   *   (A3) Proposer commits locally and forwards result to all client switches
-   *        (Q Backups respond with ACKs)
-   *
-   * With co-location, this becomes
-   *   (B1) Master sends requests to all Backups
-   *   (B2) Q Backups commit locally and respond with ACKs
-   *   (B3) Master commits locally and forwards result to all client switches
-   */
-  if (N <= 1) {
+function onePhaseCommit(numSwitches, numControllers,
+  walpha, ralpha, pcalpha, psalpha, wxmin, rxmin, pcxmin, psxmin, iterations) {
+
+  if (numControllers <= 1) {
     return [];
   }
-  var Q = Math.floor(N / 2) + 1;
 
   var datapoints = [];
+  var quorumSize = Math.floor(numControllers / 2) + 1;
   for (var i = 0; i < iterations; i++) {
     var totalLatency = 0
     var controllerOverhead = 0
     var exchangeOverhead = 0
-    var colocation = (Math.floor(Math.random() * N) != 0);
+    var colocation = (Math.floor(Math.random() * numControllers) != 0);
     controllerOverhead += nextPareto(psalpha, psxmin);
 
     // Phase 1: N requests, Q responses
     var requestLatencies = [];
     var responseLatencies = [];
-    for (var j = 1; j <= N - 1; j++) {
+    for (var j = 1; j <= numControllers - 1; j++) {
       requestLatencies.push(nextPareto(pcalpha, pcxmin));
-      if (Q >= j) {
+      if (quorumSize >= j) {
         responseLatencies.push(nextPareto(pcalpha, pcxmin));
       }
     }
@@ -147,10 +144,10 @@ function onePhaseCommit(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
     }
     exchangeOverhead += nextPareto(walpha, wxmin);                 // A3, B3
     var network_updateLatencies = [];
-    for (var j = 0; j < S; j++) {
+    for (var j = 0; j < numSwitches; j++) {
       network_updateLatencies.push(nextPareto(psalpha, psxmin));
     }
-    if (S != 0) {
+    if (numSwitches != 0) {
       controllerOverhead += Math.max.apply(null, network_updateLatencies);
     }
     totalLatency += controllerOverhead
@@ -160,51 +157,52 @@ function onePhaseCommit(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
   return datapoints;
 }
 
-function twoPhaseCommit(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
-  pcxmin, psxmin, iterations) {
+/*
+ * Compute samples that represent times to convergence using a control plane distributed with
+ * two-phase commit. This assumes 1 master and N-1 backups, where N is the number of controllers.
+ *
+ * In two-phase commit,
+ *   (A1) Proposer (backup) forwards a request to master
+ *   (A2) Master sends Prepare requests to all backups
+ *   (A3) Q backups respond with Prepare ACKs, where Q is the quorum size
+ *   (A4) Master commits locally and sends Commit messages to all backups
+ *   (A5) Proposer commits locally and forwards result to all client switches
+ *
+ * With co-location, this becomes,
+ *   (B1) Master sends Prepare requests to all backups
+ *   (B2) Q backups respond with Prepare ACKs
+ *   (B3) Master commits locally and forwards result to all client switches
+ *        (Master sends Commit messages to all backups)
+ */
+function twoPhaseCommit(numSwitches, numControllers,
+  walpha, ralpha, pcalpha, psalpha, wxmin, rxmin, pcxmin, psxmin, iterations) {
 
-  /*
-   * Replication scheme: Two-Phase Commit with 1 Master and N - 1 Backups
-   *
-   * In Two-Phase Commit,
-   *   (A1) Proposer (Backup) forwards a request to Master
-   *   (A2) Master sends Prepare requests to all Backups
-   *   (A3) Q Backups respond with Prepare ACKs
-   *   (A4) Master commits locally and sends Commit messages to all Backups
-   *   (A5) Proposer commits locally and forwards result to all client switches
-   *
-   * With co-location, this becomes,
-   *   (B1) Master sends Prepare requests to all Backups
-   *   (B2) Q Backups respond with Prepare ACKs
-   *   (B3) Master commits locally and forwards result to all client switches
-   *        (Master sends Commit messages to all Backups)
-   */
-  if (N <= 1) {
+  if (numControllers <= 1) {
     return [];
   }
-  var Q = Math.floor(N / 2) + 1;
 
   var datapoints = [];
+  var quorumSize = Math.floor(numControllers / 2) + 1;
   for (var i = 0; i < iterations; i++) {
     var totalLatency = 0
     var controllerOverhead = 0
     var exchangeOverhead = 0
-    var colocation = (Math.floor(Math.random() * N) == 0);
+    var colocation = (Math.floor(Math.random() * numControllers) == 0);
     controllerOverhead += nextPareto(psalpha, psxmin);
 
     // Phase 1: N requests, Q responses
     var requestLatencies = [];
     var responseLatencies = [];
-    for (var j = 1; j <= N - 1; j++) {
+    for (var j = 1; j <= numControllers - 1; j++) {
       requestLatencies.push(nextPareto(pcalpha, pcxmin));
-      if (Q >= j) {
+      if (quorumSize >= j) {
         responseLatencies.push(nextPareto(pcalpha, pcxmin));
       }
     }
 
     // Phase 2: N requests
     var requestLatencies2 = [];
-    for (var j = 1; j <= N - 1; j++) {
+    for (var j = 1; j <= numControllers - 1; j++) {
       requestLatencies2.push(nextPareto(pcalpha, pcxmin));
     }
 
@@ -220,10 +218,10 @@ function twoPhaseCommit(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
     }
     exchangeOverhead += nextPareto(walpha, wxmin);                 // A5, B3
     var network_updateLatencies = [];
-    for (var j = 0; j < S; j++) {
+    for (var j = 0; j < numSwitches; j++) {
       network_updateLatencies.push(nextPareto(psalpha, psxmin));
     }
-    if (S != 0) {
+    if (numSwitches != 0) {
       controllerOverhead += Math.max.apply(null, network_updateLatencies);
     }
     totalLatency += controllerOverhead
@@ -233,52 +231,52 @@ function twoPhaseCommit(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
   return datapoints;
 }
 
-function paxosCommit(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
-  pcxmin, psxmin, iterations) {
+/*
+ * Compute samples that represent times to convergence using a control plane distributed with Paxos.
+ *
+ * Assumptions:
+ *   We do not consider optimizations that involve eliminating the Prepare phase.
+ *   We consider leader-election a one-time cost and do not factor it in our computation.
+ *
+ * In Paxos,
+ *   (A1) Proposer (replica) forwards a request to leader
+ *   (A2) Leader sends Prepare requests to all replicas
+ *   (A3) Q replicas respond with Prepare ACKs, where Q is the quorum size
+ *   (A4) Leader sends Accept requests to all replicas
+ *   (A5) Q replicas respond with Accept ACKs
+ *   (A6) Leader selects a value, commits locally, and notifies all replicas of the selected value
+ *   (A7) Proposer commits locally and forwards result to all client switches
+ *
+ * With co-location, this becomes,
+ *   (B1) Leader sends Prepare requests to all replicas
+ *   (B2) Q Backups respond with Prepare ACKs
+ *   (B3) Leader sends Accept requests to all replicas
+ *   (B4) Q Backups respond with Accept ACKs
+ *   (B5) Leader selects a value, commits locally, and forwards result to all client switches
+ *        (Leader notifies all replicas of the selected value)
+ */
+function paxosCommit(numSwitches, numControllers,
+  walpha, ralpha, pcalpha, psalpha, wxmin, rxmin, pcxmin, psxmin, iterations) {
 
-  /*
-   * Replication scheme: Paxos Commit with N total nodes
-   *
-   * Assumptions:
-   *   We do not consider optimizations that involve eliminating the Prepare phase.
-   *   We consider leader-election a one-time cost and do not factor it in our computation.
-   *
-   * In Paxos Commit,
-   *   (A1) Proposer (Replica) forwards a request to Leader
-   *   (A2) Leader sends Prepare requests to all Replicas
-   *   (A3) Q Replicas respond with Prepare ACKs
-   *   (A4) Leader sends Accept requests to all Replicas
-   *   (A5) Q Replicas respond with Accept ACKs
-   *   (A6) Leader selects a value, commits locally, and notifies all Replicas of the selected value
-   *   (A7) Proposer commits locally and forwards result to all client switches
-   *
-   * With co-location, this becomes,
-   *   (B1) Leader sends Prepare requests to all Replicas
-   *   (B2) Q Backups respond with Prepare ACKs
-   *   (B3) Leader sends Accept requests to all Replicas
-   *   (B4) Q Backups respond with Accept ACKs
-   *   (B5) Leader selects a value, commits locally, and forwards result to all client switches
-   *        (Leader notifies all Replicas of the selected value)
-   */
-  if (N <= 1) {
+  if (numControllers <= 1) {
     return [];
   }
-  var Q = Math.floor(N / 2)+1;
 
   var datapoints = [];
+  var quorumSize = Math.floor(numControllers / 2) + 1;
   for (var i = 0; i < iterations; i++) {
     var totalLatency = 0
     var controllerOverhead = 0
     var exchangeOverhead = 0
-    var colocation = (Math.floor(Math.random() * N) == 0);
+    var colocation = (Math.floor(Math.random() * numControllers) == 0);
     controllerOverhead += nextPareto(psalpha, psxmin);
 
     // Phase 1: N requests, Q responses
     var requestLatencies = [];
     var responseLatencies = [];
-    for (var j = 1; j <= N - 1; j++) {
+    for (var j = 1; j <= numControllers - 1; j++) {
       requestLatencies.push(nextPareto(pcalpha, pcxmin));
-      if (Q >= j) {
+      if (quorumSize >= j) {
         responseLatencies.push(nextPareto(pcalpha, pcxmin));
       }
     }
@@ -286,16 +284,16 @@ function paxosCommit(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
     // Phase 2: N requests, Q responses
     var requestLatencies2 = [];
     var responseLatencies2 = [];
-    for (var j = 1; j <= N - 1; j++) {
+    for (var j = 1; j <= numControllers - 1; j++) {
       requestLatencies2.push(nextPareto(pcalpha, pcxmin));
-      if (Q >= j) {
+      if (quorumSize >= j) {
         responseLatencies2.push(nextPareto(pcalpha, pcxmin));
       }
     }
 
     // Phase 3: N notifications
     var notificationLatencies = [];
-    for (var j = 1; j <= N - 1; j++) {
+    for (var j = 1; j <= numControllers - 1; j++) {
       notificationLatencies.push(nextPareto(pcalpha, pcxmin));
     }
 
@@ -315,10 +313,10 @@ function paxosCommit(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
     }
     exchangeOverhead += nextPareto(walpha, wxmin);                  // A7, B5
     var network_updateLatencies = [];
-    for (var j = 0; j < S; j++) {
+    for (var j = 0; j < numSwitches; j++) {
       network_updateLatencies.push(nextPareto(psalpha, psxmin));
     }
-    if (S != 0) {
+    if (numSwitches != 0) {
       controllerOverhead += Math.max.apply(null, network_updateLatencies);
     }
     totalLatency += controllerOverhead
@@ -327,4 +325,3 @@ function paxosCommit(S, N, walpha, ralpha, pcalpha, psalpha, wxmin, rxmin,
   }
   return datapoints;
 }
-

@@ -7,3 +7,7 @@ This is an incomplete list of things to do to improve this model:
 5. Model switch-to-controller and switch-to-switch latencies separately
 6. Allow turning off certain parameters altogether (set the value to 0)
 7. Account for other policies (ACL) and more complicated failure conditions
+
+5/4/13
+
+8. For link failures, fail different links instead of the same one every iteration.

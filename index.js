@@ -1,17 +1,17 @@
-/* -------------------- *
+/* ==================== *
  * Logic for index.html *
- * -------------------- */
+ * ==================== */
 
 jQuery.noConflict();
 
 document.observe('dom:loaded', function () {
-  initialize()
+  initialize();
 });
 
 
-/*
- * Global variables.
- */
+/* ---------------- *
+ * Global variables *
+ * ---------------- */
 
 var initialized = false;
 
@@ -39,9 +39,9 @@ var defaultTopologies = {
 var currentTopology = Object.keys(defaultTopologies)[0];
 
 
-/*
- * Initialize all HTML elements.
- */
+/* ---------------------------- *
+ * Initialize all HTML elements *
+ * ---------------------------- */
 
 function initialize() {
   constructSliders();
@@ -198,7 +198,7 @@ function constructTopologyDropdown() {
     jQuery("#num-elements-key").text(function(i, oldKey) {
       // If the existing element refers to switches, convert this number to pods
       if (isFatTree(currentTopology) && oldKey == "Number of switches: ") {
-        jQuery("#num-elements-key").text("Number of pods: ")
+        jQuery("#num-elements-key").text("Number of pods: ");
         jQuery("#num-elements-value").text(function(j, oldValue) {
           var numSwitches = parseInt(oldValue);
           var numPods = switchesToPods(numSwitches);
@@ -208,7 +208,7 @@ function constructTopologyDropdown() {
       }
       // If the existing element refers to pods, convert this number to switches
       if (!isFatTree(currentTopology) && oldKey == "Number of pods: ") {
-        jQuery("#num-elements-key").text("Number of switches: ")
+        jQuery("#num-elements-key").text("Number of switches: ");
         jQuery("#num-elements-value").text(function(j, oldValue) {
           var numPods = parseInt(oldValue);
           var numSwitches = podsToSwitches(numPods);
@@ -225,107 +225,116 @@ function constructTopologyDropdown() {
  * Return whether the given topology name refers to fat-trees.
  */
 function isFatTree(topologyName) {
-  return topologyName.indexOf("Fat-tree") >= 0 || topologyName.indexOf("fat-tree") >= 0
+  return topologyName.indexOf("Fat-tree") >= 0 || topologyName.indexOf("fat-tree") >= 0;
+}
+
+
+/* ------------------------------------- *
+ * Generate convergence time data points *
+ * ------------------------------------- */
+
+/*
+ * Trigger a single link failure in the given network, and compute samples that represent the
+ * time to convergence in different control plane designs.
+ */
+function triggerLinkFailure(topology) {
+  var numSwitches = topology.numSwitches;
+  var links = topology.links;
+  var beforeLinks = links;
+  var afterLinks = links.slice(0);
+  var linkToRemove = links[Math.floor(Math.random() * links.length)];
+  var srcToRemove = linkToRemove.src;
+  var destToRemove = linkToRemove.dest;
+  for (var i = links.length - 1; i >= 0; i--) {
+    var link = afterLinks[i];
+    // Remove link in both directions
+    if ((link.src == srcToRemove && link.dest == destToRemove) ||
+        (link.src == destToRemove && link.dest == srcToRemove)) {
+      afterLinks.splice(i, 1);
+    }
+  }
+  var beforeMatrix = convergedLinkMatrix(numSwitches, beforeLinks);
+  var afterMatrix = convergedLinkMatrix(numSwitches, afterLinks);
+  var _switchesToUpdate = switchesToUpdate(beforeMatrix, afterMatrix);
+
+  return new SamplesContainer(
+    computeSamplesTraditional(srcToRemove, destToRemove, afterMatrix, _switchesToUpdate),
+    computeSamples(singleController, _switchesToUpdate.length),
+    computeSamples(onePhaseCommit, _switchesToUpdate.length),
+    computeSamples(twoPhaseCommit, _switchesToUpdate.length),
+    computeSamples(paxosCommit, _switchesToUpdate.length)
+  );
 }
 
 /*
- * Generate convergence time data points.
+ * Compute samples that represent the time to convergence using the given replication scheme.
+ * The replication scheme refers to the algorithm used for interaction between controllers.
  */
+function computeSamples(replicationScheme, numSwitchesToUpdate) {
+  var samples = replicationScheme(
+    numSwitchesToUpdate,
+    parameterValues.numControllers,
+    parameterValues.walpha,
+    parameterValues.ralpha,
+    parameterValues.pcalpha,
+    parameterValues.psalpha,
+    parameterValues.wxmin,
+    parameterValues.rxmin,
+    parameterValues.pcxmin,
+    parameterValues.psxmin,
+    parameterValues.iterations);
+  var endToEndTimes = samples.map(function(v) { return v[0]; });
+  return endToEndTimes;
+}
 
-function DataContainer(numSwitches, links) {
-  this.numControllers = parameterValues.numControllers;
-  this.numSwitches = numSwitches;
-  this.links = links;
-  this.iterations = parameterValues.iterations
-  this.ralpha = parameterValues.ralpha
-  this.rxmin = parameterValues.rxmin
-  this.walpha = parameterValues.walpha
-  this.wxmin = parameterValues.wxmin
-  this.psalpha = parameterValues.psalpha
-  this.pcalpha = parameterValues.pcalpha
-  this.psxmin = parameterValues.psxmin
-  this.pcxmin = parameterValues.pcxmin
+/*
+ * Compute samples that represent the time to convergence using the traditional routing model.
+ */
+function computeSamplesTraditional(srcToRemove, destToRemove, afterMatrix, switchesToUpdate) {
+  return noController(
+    srcToRemove,
+    destToRemove,
+    afterMatrix,
+    switchesToUpdate,
+    parameterValues.walpha,
+    parameterValues.ralpha,
+    parameterValues.pcalpha,
+    parameterValues.psalpha,
+    parameterValues.wxmin,
+    parameterValues.rxmin,
+    parameterValues.pcxmin,
+    parameterValues.psxmin,
+    parameterValues.iterations);
+}
 
-  function computeSamples(replicationScheme) {
-    return replicationScheme(this.numCoreSwitchesToUpdate, this.numControllers, this.walpha,
-      this.ralpha, this.pcalpha, this.psalpha, this.wxmin, this.rxmin, this.pcxmin, this.psxmin,
-      this.iterations);
-  }
-
-  this.compute = function() {
-    var noCtrl = noController(this.srcToRemove, this.destToRemove, this.afterMatrix,
-      this.coreSwitchesToUpdate, this.walpha, this.ralpha, this.pcalpha, this.psalpha, this.wxmin,
-      this.rxmin, this.pcxmin, this.psxmin, this.iterations);
-    this.traditionalTimes = noCtrl
-    this.traditionalCdf = computeCdf(noCtrl);
-    this.singleSamples = computeSamples(singleController);
-    this.onepcSamples = computeSamples(onePhaseCommit);
-    this.twopcSamples = computeSamples(twoPhaseCommit);
-    this.paxosSamples = computeSamples(paxosCommit);
-    this.singleTimes = this.singleSamples.map(function(v){ return v[0] });
-    this.onepcTimes = this.onepcSamples.map(function(v){ return v[0] });
-    this.twopcTimes = this.twopcSamples.map(function(v){ return v[0] });
-    this.paxosTimes = this.paxosSamples.map(function(v){ return v[0] });
-    this.singleCdf = computeCdf(this.singleTimes);
-    this.onepcCdf = computeCdf(this.onepcTimes);
-    this.twopcCdf = computeCdf(this.twopcTimes);
-    this.paxosCdf = computeCdf(this.paxosTimes);
-  }
-
-  /*
-   * Remove a link to cause a link down event.
-   * This is the event that induces a re-convergence of routing state in the network.
-   */
-  this.removeLink = function() {
-    if (this.links.length == 0) return;
-    // Construct before and after network configurations
-    var beforeLinks = this.links;
-    var afterLinks = this.links.slice(0);
-    var linkToRemove = this.links[Math.floor(Math.random() * this.links.length)];
-    var srcToRemove = linkToRemove.src;
-    var destToRemove = linkToRemove.dest;
-    for (var i = this.links.length - 1; i >= 0; i--) {
-      var link = afterLinks[i];
-      if ((link.src == srcToRemove && link.dest == destToRemove) ||
-          (link.src == destToRemove && link.dest == srcToRemove)) {
-        afterLinks.splice(i, 1);
-      }
-    }
-    this.srcToRemove = srcToRemove;
-    this.destToRemove = destToRemove;
-    this.beforeMatrix = convergedLinkMatrix(this.numSwitches, beforeLinks);
-    this.afterMatrix = convergedLinkMatrix(this.numSwitches, afterLinks);
-    this.coreSwitchesToUpdate = switchesToUpdate(this.beforeMatrix, this.afterMatrix);
-    this.numCoreSwitchesToUpdate = this.coreSwitchesToUpdate.length;
-    // Don't update the ingress switch until the atomic commit point
-    if (this.consistentUpdates) {
-      if (this.numCoreSwitchesToUpdate != 0) {
-        this.numEdgeSwitchesToUpdate = 1;
-        this.numCoreSwitchesToUpdate -= 1;
-      } else {
-        // Already converged (although controllers do run replication scheme to decide this,
-        // the network itself is already converged)
-        this.numEdgeSwitchesToUpdate = 0;
-      }
-    }
-  }
-
-  this.removeLink();
-  this.compute();
+/*
+ * A container of samples that represent times to convergence under different control planes.
+ */
+function SamplesContainer(traditionalTimes, singleTimes, onepcTimes, twopcTimes, paxosTimes) {
+  this.traditionalTimes = traditionalTimes;
+  this.singleTimes = singleTimes;
+  this.onepcTimes = onepcTimes;
+  this.twopcTimes = twopcTimes;
+  this.paxosTimes = paxosTimes;
+  this.traditionalCdf = computeCdf(this.traditionalTimes);
+  this.singleCdf = computeCdf(this.singleTimes);
+  this.onepcCdf = computeCdf(this.onepcTimes);
+  this.twopcCdf = computeCdf(this.twopcTimes);
+  this.paxosCdf = computeCdf(this.paxosTimes);
   return this;
 }
 
 
-/*
- * Reflect updated statistics in HTML.
- */
+/* ---------------------------------- *
+ * Reflect updated statistics in HTML *
+ * ---------------------------------- */
 
 function updateConvergenceTime() {
   var numSwitches = parameterValues.numSwitches;
   var topology = new defaultTopologies[currentTopology](numSwitches);
-  var data = DataContainer(topology.numSwitches, topology.links);
-  updateConvergencePercentiles(data);
-  drawConvergenceCdf(data);
+  var samples = triggerLinkFailure(topology);
+  updateConvergencePercentiles(samples);
+  drawConvergenceCdf(samples);
 }
 
 function updateConvergencePercentiles(data) {
@@ -395,9 +404,9 @@ function updateAllParameterPercentiles() {
 }
 
 
-/*
- * Edit values of model parameters.
- */
+/* ------------------------------- *
+ * Edit values of model parameters *
+ * ------------------------------- */
 
 function editNumSwitches(numSwitches) {
   jQuery("#num-elements-key").text("Number of switches: ");

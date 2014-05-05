@@ -2,9 +2,9 @@
 // Copyright 2012-2013 Colin Scott
 // Copyright 2012-2013 Andrew Or
 
-/*
- * Miscellaneous helper functions
- */
+/* ============================== *
+ * Miscellaneous helper functions *
+ * ============================== /
 
 /* Draw a random sample from the given Exponential distribution */
 function nextExponential(lmbda) {

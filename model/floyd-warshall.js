@@ -1,6 +1,6 @@
-/* ----------------------------------------------------- *
+/* ===================================================== *
  * Helper methods for computing changes in routing state *
- * ----------------------------------------------------- */
+ * ===================================================== */
 
 /*
  * Construct link cost matrix from the given lists of switches and links.
@@ -212,6 +212,7 @@ function printDags(dags) {
  * --------------- */
 
 /*
+
 var inf = Number.POSITIVE_INFINITY;
 var matrix1 = [[[0,0],   [2,0],    [8,0],    [inf,-1], [inf,-1]],
               [[2,1],    [0,1],    [inf,-1], [13,1],   [inf,-1]],
@@ -240,4 +241,5 @@ console.log("\n\n");
 
 console.log("*** Result ***");
 console.log("Number of switches to update: " + numSwitchesToUpdate(matrix1, matrix2));
+
 */
