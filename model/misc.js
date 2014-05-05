@@ -13,7 +13,7 @@ function nextExponential(lmbda) {
 
 /* Draw a random sample from the given Pareto distribution */
 function nextPareto(alpha, xmin) {
-  return Math.pow(alpha * Math.pow(xmin, alpha) / (1 - Math.random()), 1 / (alpha + 1))
+  return Math.pow(alpha * Math.pow(xmin, alpha) / (1 - Math.random()), 1 / (alpha + 1));
 }
 
 function calcExponentialPdf(lmbda, t) {
@@ -75,11 +75,10 @@ function calculatePercentile(datapoints, pctile) {
 
 /* Calculates a percentile value of a given Pareto distribution */
 function calculateParetoPercentile(alpha, xmin, pctile) {
-  var ITERATIONS = Math.min(Math.max(10000.0, 1 / (1 - pctile)), 100000.0);
-  var i = 0;
+  var iterations = Math.min(Math.max(10000.0, 1 / (1 - pctile)), 100000.0);
   var latencies = [];
-  for (i = 0; i < ITERATIONS; i++) {
-    latencies.push(nextPareto(alpha, xmin))
+  for (var i = 0; i < iterations; i++) {
+    latencies.push(nextPareto(alpha, xmin));
   }
   return calculatePercentile(latencies, pctile);
 }

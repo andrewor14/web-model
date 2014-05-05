@@ -86,9 +86,9 @@ function singleController(numSwitches, numControllers,
     if (numSwitches != 0) {
       controllerOverhead += Math.max.apply(null, network_updateLatencies);
     }
-    totalLatency += controllerOverhead
-    totalLatency += exchangeOverhead
-    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead])
+    totalLatency += controllerOverhead;
+    totalLatency += exchangeOverhead;
+    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead]);
   }
   return datapoints;
 }
@@ -119,9 +119,9 @@ function onePhaseCommit(numSwitches, numControllers,
   var datapoints = [];
   var quorumSize = Math.floor(numControllers / 2) + 1;
   for (var i = 0; i < iterations; i++) {
-    var totalLatency = 0
-    var controllerOverhead = 0
-    var exchangeOverhead = 0
+    var totalLatency = 0;
+    var controllerOverhead = 0;
+    var exchangeOverhead = 0;
     var colocation = (Math.floor(Math.random() * numControllers) != 0);
     controllerOverhead += nextPareto(psalpha, psxmin);
 
@@ -150,9 +150,9 @@ function onePhaseCommit(numSwitches, numControllers,
     if (numSwitches != 0) {
       controllerOverhead += Math.max.apply(null, network_updateLatencies);
     }
-    totalLatency += controllerOverhead
-    totalLatency += exchangeOverhead
-    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead])
+    totalLatency += controllerOverhead;
+    totalLatency += exchangeOverhead;
+    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead]);
   }
   return datapoints;
 }
@@ -184,9 +184,9 @@ function twoPhaseCommit(numSwitches, numControllers,
   var datapoints = [];
   var quorumSize = Math.floor(numControllers / 2) + 1;
   for (var i = 0; i < iterations; i++) {
-    var totalLatency = 0
-    var controllerOverhead = 0
-    var exchangeOverhead = 0
+    var totalLatency = 0;
+    var controllerOverhead = 0;
+    var exchangeOverhead = 0;
     var colocation = (Math.floor(Math.random() * numControllers) == 0);
     controllerOverhead += nextPareto(psalpha, psxmin);
 
@@ -224,9 +224,9 @@ function twoPhaseCommit(numSwitches, numControllers,
     if (numSwitches != 0) {
       controllerOverhead += Math.max.apply(null, network_updateLatencies);
     }
-    totalLatency += controllerOverhead
-    totalLatency += exchangeOverhead
-    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead])
+    totalLatency += controllerOverhead;
+    totalLatency += exchangeOverhead;
+    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead]);
   }
   return datapoints;
 }
@@ -265,9 +265,9 @@ function paxosCommit(numSwitches, numControllers,
   var datapoints = [];
   var quorumSize = Math.floor(numControllers / 2) + 1;
   for (var i = 0; i < iterations; i++) {
-    var totalLatency = 0
-    var controllerOverhead = 0
-    var exchangeOverhead = 0
+    var totalLatency = 0;
+    var controllerOverhead = 0;
+    var exchangeOverhead = 0;
     var colocation = (Math.floor(Math.random() * numControllers) == 0);
     controllerOverhead += nextPareto(psalpha, psxmin);
 
@@ -319,9 +319,9 @@ function paxosCommit(numSwitches, numControllers,
     if (numSwitches != 0) {
       controllerOverhead += Math.max.apply(null, network_updateLatencies);
     }
-    totalLatency += controllerOverhead
-    totalLatency += exchangeOverhead
-    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead])
+    totalLatency += controllerOverhead;
+    totalLatency += exchangeOverhead;
+    datapoints.push([totalLatency, controllerOverhead, exchangeOverhead]);
   }
   return datapoints;
 }

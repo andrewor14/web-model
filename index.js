@@ -361,8 +361,8 @@ function updateConvergencePercentiles(data) {
 }
 
 function updateReadLatencyPercentiles() {
-  var alpha = parameterValues.ralpha
-  var xmin = parameterValues.rxmin
+  var alpha = parameterValues.ralpha;
+  var xmin = parameterValues.rxmin;
   jQuery("#rlatency50pct").text(
     roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2));
   jQuery("#rlatency999pct").text(
@@ -370,8 +370,8 @@ function updateReadLatencyPercentiles() {
 }
 
 function updateWriteLatencyPercentiles() {
-  var alpha = parameterValues.walpha
-  var xmin = parameterValues.wxmin
+  var alpha = parameterValues.walpha;
+  var xmin = parameterValues.wxmin;
   jQuery("#wlatency50pct").text(
     roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2));
   jQuery("#wlatency999pct").text(
@@ -379,8 +379,8 @@ function updateWriteLatencyPercentiles() {
 }
 
 function updateSwitchNetworkLatencyPercentiles() {
-  var alpha = parameterValues.psalpha
-  var xmin = parameterValues.psxmin
+  var alpha = parameterValues.psalpha;
+  var xmin = parameterValues.psxmin;
   jQuery("#pslatency50pct").text(
     roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2));
   jQuery("#pslatency999pct").text(
@@ -388,8 +388,8 @@ function updateSwitchNetworkLatencyPercentiles() {
 }
 
 function updateControllerNetworkLatencyPercentiles() {
-  var alpha = parameterValues.pcalpha
-  var xmin = parameterValues.pcxmin
+  var alpha = parameterValues.pcalpha;
+  var xmin = parameterValues.pcxmin;
   jQuery("#pclatency50pct").text(
     roundNumber(calculateParetoPercentile(alpha, xmin, 0.5), 2));
   jQuery("#pclatency999pct").text(
@@ -453,7 +453,7 @@ function editRAlpha(alpha) {
 
 function editRXmin(xmin) {
   jQuery("#rxmin-value").text(xmin);
-  parameterValues.rxmin = xmin
+  parameterValues.rxmin = xmin;
   if (initialized) {
     updateReadLatencyPercentiles();
     drawReadLatencyCDF();
@@ -493,7 +493,7 @@ function editPsAlpha(alpha) {
 
 function editPsXmin(xmin) {
   jQuery("#psxmin-value").text(xmin);
-  parameterValues.psxmin = xmin
+  parameterValues.psxmin = xmin;
   if (initialized) {
     updateSwitchNetworkLatencyPercentiles();
     drawSwitchNetworkLatencyCDF();
@@ -503,7 +503,7 @@ function editPsXmin(xmin) {
 
 function editPcAlpha(alpha) {
   jQuery("#pcalpha-value").text(alpha);
-  parameterValues.pcalpha = alpha
+  parameterValues.pcalpha = alpha;
   if (initialized) {
     updateControllerNetworkLatencyPercentiles();
     drawControllerNetworkLatencyCDF();
@@ -513,7 +513,7 @@ function editPcAlpha(alpha) {
 
 function editPcXmin(xmin) {
   jQuery("#pcxmin-value").text(xmin);
-  parameterValues.pcxmin = xmin
+  parameterValues.pcxmin = xmin;
   if (initialized) {
     updateControllerNetworkLatencyPercentiles();
     drawControllerNetworkLatencyCDF();
@@ -537,19 +537,19 @@ function drawParetoCDF(alpha, xmin, container) {
 }
 
 function drawReadLatencyCDF() {
-  drawParetoCDF(parameterValues.ralpha, parameterValues.rxmin, "rcontainer")
+  drawParetoCDF(parameterValues.ralpha, parameterValues.rxmin, "rcontainer");
 }
 
 function drawWriteLatencyCDF() {
-  drawParetoCDF(parameterValues.walpha, parameterValues.wxmin, "wcontainer")
+  drawParetoCDF(parameterValues.walpha, parameterValues.wxmin, "wcontainer");
 }
 
 function drawSwitchNetworkLatencyCDF() {
-  drawParetoCDF(parameterValues.psalpha, parameterValues.psxmin, "pscontainer")
+  drawParetoCDF(parameterValues.psalpha, parameterValues.psxmin, "pscontainer");
 }
 
 function drawControllerNetworkLatencyCDF() {
-  drawParetoCDF(parameterValues.pcalpha, parameterValues.pcxmin, "pccontainer")
+  drawParetoCDF(parameterValues.pcalpha, parameterValues.pcxmin, "pccontainer");
 }
 
 function drawAllParameterCDFs() {
