@@ -23,7 +23,7 @@
     <link href="index.css" rel="stylesheet">
   </head>
   <body>
-    
+
     <!-- Navigation -->
     <div id="navigation" class="navbar navbar-inverse navbar-fixed-top">
       <div class="container">
@@ -41,35 +41,49 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Main header -->
     <div id="title-container" class="jumbotron">
       <h1>SDN Convergence Model</h1>
       <p class="lead">How long do your SDN controllers take to converge?</p>
     </div>
-    
+
     <!-- About -->
     <div class="container">
       <section id="about">
-        <h1 class="sub-header">Convergence Model in Brief</h1>
-        <p>Which replication algorithm is best for you?</p>
+        <h1  class="sub-header">Convergence Model in Brief</h1>
+        <p>A key latency metric for network control plane systems is
+        <em>convergence time</em>: the
+        duration between when a change occurs in a network and when
+        the network has converged to an updated configuration that accomodates
+        that change. The faster the convergence time, the better.</p>
         <p>
-          This tool can be used to provide a quantitative evaluation of which replication
-          and network update algorithms are most appropriate for a given topology and workload.
-          With it, you can answer questions such as "How far will my current approach scale?",
+        Convergence time depends on many variables: latencies between network
+        devices, the number of network devices, the complexity of the replication mechanism used (if any)
+        between controllers, storage latencies, etc. With so many variables it can be difficult to
+        build an intuition for how the variables interact to determine
+        overall convergence time.
+        </p>
+        <p>
+          The purpose of this tool is to help build that intuition.
+          Based on analytical models of communication complexity for various
+          replication and network update schemes, the tool quantifies
+          convergence times for a given topology and workload.
+          With it, you can answer questions such as "How far will my current
+          approach scale while staying within my SLA?",
           and "What is the convergence time of my network under a worst-case workload?".
         </p>
       </section>
       <div class="section-divider"></div>
     </div>
-    
+
     <!-- Instructions -->
     <div class="container">
       <section id="instructions">
         <h1 class="sub-header">Controls</h1>
           <p class="control">
             <span class="control-header">Accuracy</span> - Monte Carlo simulation means we run
-            repeated trials for a configuration. This parameter determines how many samples we
+            repeated trials for a given configuration. This parameter determines how many samples we
             take to determine the CDF.
           </p>
           <p class="control">
@@ -87,7 +101,7 @@
       </section>
       <div class="section-divider"></div>
     </div>
-    
+
     <!-- Demo -->
     <div class="container">
       <section id="demo">
@@ -247,7 +261,7 @@
       </section>
       <div class="section-divider"></div>
     </div>
-    
+
     <!-- Questions -->
     <div class="container">
       <section id="questions">
@@ -255,12 +269,13 @@
         <p>
           If you have any questions, please contact us at
           <a href="andrewor14@gmail.com">andrewor14@gmail.com</a> or
-          <a href="cs@cs.berkeley.edu">cs@cs.berkeley.edu</a>.
+          <a href="cs@cs.berkeley.edu">cs@cs.berkeley.edu</a>. We have a
+          detailed writeup of this tool available upon request.
         </p>
       </section>
       <div class="section-divider"></div>
     </div>
-    
+
     <!-- Footer -->
     <div class="footer container">
       The layout and initial simulator for this page were shamelessly stolen from
@@ -268,10 +283,9 @@
       <a href="http://pbs.cs.berkeley.edu/">PBS</a> crew. The page's design and layout are
       built with <a href="http://twitter.github.com/bootstrap/" target="_blank">Bootstrap</a>
       and its provided sample code. <a href="http://solutoire.com/flotr/" target="_blank">
-      Flotr</a> powers the graph visualization, and <a href="http://d3js.org">d3</a> runs the
-      topology generator. Some <a href="http://jqueryui.com/" target="_blank">jQuery UI</a>
+      Flotr</a> powers the graph visualization. Some <a href="http://jqueryui.com/" target="_blank">jQuery UI</a>
       is also thrown in for good measure.
     </div>
-    
+
   </body>
 </html>
