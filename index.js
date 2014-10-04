@@ -19,14 +19,15 @@ var parameterValues = {
   numControllers: 3,
   numSwitches: 20,
   iterations: 1000,
+  // Everything in milliseconds:
   ralpha: 3.8,
   rxmin: 1.55,
   walpha: 3.35,
   wxmin: 1.68,
-  psalpha: 2.5,
-  psxmin: 0.5,
-  pcalpha: 2.5,
-  pcxmin: 0.5
+  psalpha: 2.0,
+  psxmin: 0.1,
+  pcalpha: 2.0,
+  pcxmin: 0.1
 };
 
 var defaultTopologies = {
@@ -117,32 +118,32 @@ function constructSliders() {
     }
   });
   jQuery("#psalpha-slider").slider({
-    min: 1000,
-    max: 10000,
+    min: 200,
+    max: 4000,
     value: parameterValues.psalpha * 1000,
     change: function (event, ui) {
       editPsAlpha(ui.value / 1000);
     }
   });
   jQuery("#psxmin-slider").slider({
-    min: 100,
-    max: 5000,
+    min: 50,
+    max: 1000,
     value: parameterValues.psxmin * 1000,
     change: function (event, ui) {
       editPsXmin(ui.value / 1000);
     }
   });
   jQuery("#pcalpha-slider").slider({
-    min: 1000,
-    max: 10000,
+    min: 200,
+    max: 4000,
     value: parameterValues.pcalpha * 1000,
     change: function (event, ui) {
       editPcAlpha(ui.value / 1000);
     }
   });
   jQuery("#pcxmin-slider").slider({
-    min: 100,
-    max: 5000,
+    min: 50,
+    max: 1000,
     value: parameterValues.pcxmin * 1000,
     change: function (event, ui) {
       editPcXmin(ui.value / 1000);
@@ -540,9 +541,15 @@ function editPcXmin(xmin) {
  * Draw each CDF using Flotr.
  */
 
-function drawParetoCDF(alpha, xmin, container) {
+function drawParetoCDF(alpha, xmin, container, max_xaxis, step) {
+  if (max_xaxis === undefined) {
+    max_xaxis = 32;
+  }
+  if (step === undefined) {
+    step = 0.5;
+  }
   var data = [];
-  for (var i = 0; i < 32; i += 0.5) {
+  for (var i = 0; i < max_xaxis; i += step) {
     data.push([i, calcParetoCdf(alpha, xmin, i)]);
   }
   Flotr.draw($(container), [data], {
@@ -559,11 +566,11 @@ function drawWriteLatencyCDF() {
 }
 
 function drawSwitchNetworkLatencyCDF() {
-  drawParetoCDF(parameterValues.psalpha, parameterValues.psxmin, "pscontainer");
+  drawParetoCDF(parameterValues.psalpha, parameterValues.psxmin, "pscontainer", 2.0, 0.03125);
 }
 
 function drawControllerNetworkLatencyCDF() {
-  drawParetoCDF(parameterValues.pcalpha, parameterValues.pcxmin, "pccontainer");
+  drawParetoCDF(parameterValues.pcalpha, parameterValues.pcxmin, "pccontainer", 2.0, 0.03125);
 }
 
 function drawAllParameterCDFs() {
